@@ -308,7 +308,7 @@ Rules:
 - `main`: demo-ready stable branch
 - `feat/agent-backend`: Agent·Backend
 - `feat/citizen-pwa`: citizen application
-- `feat/admin-deploy`: admin, integration, deployment
+- `feat/admin-integration`: admin, integration, deployment
 
 Rules:
 
@@ -487,3 +487,21 @@ Rules:
 - Record only tests that were actually run.
 - Do not use archived prompts as the current specification.
 - Current project truth is `docs/PROJECT_CONTEXT.md`, `docs/DECISIONS.md`, and `docs/contracts/`.
+
+---
+
+## 17. Responding to "What should I do next?"
+
+When the user asks what to work on next:
+
+1. Check the current branch and repository status.
+2. Map `feat/agent-backend`, `feat/citizen-pwa`, or `feat/admin-integration` to its responsible Work log.
+3. Read its Current status, Next actions, Completion criteria, Dependencies, and latest Change history entry.
+4. Confirm that the first incomplete action does not conflict with `docs/DECISIONS.md` or `docs/contracts/`.
+5. Recommend the first incomplete action with its expected result, affected files, and verification commands.
+6. Do not select work owned by another teammate.
+7. If the current branch does not identify an ownership area, ask which role the user owns before changing code.
+8. If the Work log is stale or conflicts with a newer shared contract, report the conflict and update the Work log before implementation.
+9. After completing and verifying work, mark the action complete and update Current status, Dependencies, and Change history.
+
+Do not mark an action complete before its Completion criteria have been verified.
