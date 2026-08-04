@@ -1,0 +1,27 @@
+:root {
+  color: #172033;
+  font-family: Arial, sans-serif;
+  background: #f7f8fb;
+}
+
+body {
+  margin: 0;
+}
+
+main {
+  max-width: 640px;
+  margin: 80px auto;
+  padding: 32px;
+  background: #ffffff;
+  border-radius: 16px;
+}
+
+.eyebrow {
+  color: #3d5afe;
+  font-weight: 700;
+}
+
+.environment {
+  color: #5e6676;
+  font-size: 0.9rem;
+}
