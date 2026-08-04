@@ -81,9 +81,9 @@ Do not publish a package that is unapproved or lacks required evidence.
 - For a shared contract change, record affected owners in `docs/DECISIONS.md`; do not rewrite their implementation status.
 - Typo-only or formatting-only edits do not require a Work log history entry.
 
-## 6. Responding to “나 뭐해?”
+## 6. Selecting the next task
 
-When the user asks what to work on next:
+When the user asks for their next task, current priority, or recommended work:
 
 1. Check the current branch and repository status.
 2. Open the mapped Work log.
