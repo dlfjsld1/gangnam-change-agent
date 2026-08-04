@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gangnam-change-agent.local/contracts/agent-run.schema.json",
+  "title": "AgentRun",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "run_id",
+    "notice_id",
+    "status",
+    "node_logs",
+    "review_required",
+    "review_reason",
+    "unresolved_fields"
+  ],
+  "properties": {
+    "run_id": {"type": "string"},
+    "notice_id": {"type": "string"},
+    "status": {"enum": ["queued", "running", "completed", "failed", "review_required"]},
+    "node_logs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["node", "status", "message"],
+        "properties": {
+          "node": {"type": "string"},
+          "status": {"enum": ["started", "completed", "failed"]},
+          "message": {"type": "string"}
+        }
+      }
+    },
+    "review_required": {"type": "boolean"},
+    "review_reason": {"type": ["string", "null"]},
+    "unresolved_fields": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "policy_id": {"type": ["string", "null"]}
+  }
+}

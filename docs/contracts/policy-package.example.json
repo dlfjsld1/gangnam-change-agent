@@ -1,0 +1,103 @@
+{
+  "policy_id": "demo-policy-v2",
+  "policy_family_id": "demo-policy",
+  "version": 2,
+  "title": "청년 지원사업 변경",
+  "category": "지원사업",
+  "published_at": "2026-08-04",
+  "effective_at": "2026-08-05",
+  "deadline_at": "2026-09-10",
+  "summary": "데모용 정책 패키지입니다. 지원 연령이 확대되고 병역 이행 상태 조건이 추가되었습니다.",
+  "changes": [
+    {
+      "change_id": "change-age",
+      "field": "age",
+      "label": "지원 연령",
+      "before": {"min": 19, "max": 34},
+      "after": {"min": 19, "max": 39},
+      "change_type": "expanded",
+      "impact_hint": "기존에 연령 조건으로 제외된 일부 시민이 새롭게 대상이 될 수 있습니다.",
+      "evidence_id": "evidence-1"
+    }
+  ],
+  "eligibility_rule": {
+    "and": [
+      {"field": "residence", "operator": "equals", "value": "강남구"},
+      {"field": "age", "operator": "between", "min": 19, "max": 39},
+      {"field": "employment_status", "operator": "equals", "value": "unemployed"},
+      {"field": "military_service_status", "operator": "equals", "value": "completed"}
+    ]
+  },
+  "required_profile_fields": [
+    {
+      "key": "residence",
+      "label": "거주 지역",
+      "data_type": "string",
+      "question": "현재 거주 지역은 어디인가요?",
+      "sensitivity": "medium",
+      "validity_days": 365,
+      "review_status": "approved"
+    },
+    {
+      "key": "age",
+      "label": "나이",
+      "data_type": "number",
+      "question": "현재 나이를 입력해 주세요.",
+      "sensitivity": "low",
+      "validity_days": 365,
+      "review_status": "approved"
+    },
+    {
+      "key": "employment_status",
+      "label": "고용 상태",
+      "data_type": "enum",
+      "allowed_values": [
+        {"value": "employed", "label": "취업"},
+        {"value": "unemployed", "label": "미취업"}
+      ],
+      "question": "현재 고용 상태는 무엇인가요?",
+      "sensitivity": "medium",
+      "validity_days": 90,
+      "review_status": "approved"
+    },
+    {
+      "key": "military_service_status",
+      "label": "병역 이행 상태",
+      "data_type": "enum",
+      "allowed_values": [
+        {"value": "completed", "label": "이행함"},
+        {"value": "not_completed", "label": "미이행"},
+        {"value": "exempted", "label": "면제"}
+      ],
+      "question": "병역 의무를 이행하셨나요?",
+      "sensitivity": "medium",
+      "validity_days": 365,
+      "review_status": "approved"
+    }
+  ],
+  "impact_scope": {
+    "facilities": [],
+    "stations": [],
+    "bus_stops": [],
+    "roads": [],
+    "places": []
+  },
+  "required_actions": [
+    {"action_id": "check-employment", "label": "현재 고용 상태 확인", "priority": 1},
+    {"action_id": "apply", "label": "2026-09-10까지 신청", "priority": 2}
+  ],
+  "evidence": [
+    {
+      "evidence_id": "evidence-1",
+      "source_type": "DEMO",
+      "document_name": "demo-notice.json",
+      "location": "지원 대상 항목",
+      "quote": "지원 대상: 만 19세 이상 39세 이하",
+      "source_url": "https://example.com/demo-policy"
+    }
+  ],
+  "review": {
+    "status": "approved",
+    "reviewed_at": "2026-08-04T15:00:00+09:00"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gangnam-change-agent.local/contracts/profile-value.schema.json",
+  "title": "ProfileValue",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["value", "updatedAt", "source", "sensitivity"],
+  "properties": {
+    "value": {},
+    "updatedAt": {"type": "string", "format": "date"},
+    "validUntil": {"type": "string", "format": "date"},
+    "source": {"const": "user_input"},
+    "sensitivity": {"enum": ["low", "medium", "high"]}
+  }
+}

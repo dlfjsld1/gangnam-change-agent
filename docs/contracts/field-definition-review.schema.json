@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gangnam-change-agent.local/contracts/field-definition-review.schema.json",
+  "title": "FieldDefinitionReview",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["review_id", "proposal", "status", "reviewed_at"],
+  "properties": {
+    "review_id": {"type": "string"},
+    "proposal": {"$ref": "field-definition-proposal.schema.json"},
+    "status": {"enum": ["pending", "approved", "rejected"]},
+    "approved_field": {
+      "oneOf": [
+        {"$ref": "field-definition.schema.json"},
+        {"type": "null"}
+      ]
+    },
+    "review_note": {"type": ["string", "null"]},
+    "reviewed_at": {"type": ["string", "null"], "format": "date-time"}
+  }
+}

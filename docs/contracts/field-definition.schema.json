@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gangnam-change-agent.local/contracts/field-definition.schema.json",
+  "title": "FieldDefinition",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "key",
+    "label",
+    "data_type",
+    "question",
+    "sensitivity",
+    "review_status"
+  ],
+  "properties": {
+    "key": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*$"
+    },
+    "label": {
+      "type": "string",
+      "minLength": 1
+    },
+    "data_type": {
+      "type": "string",
+      "enum": ["boolean", "enum", "number", "date", "string", "list"]
+    },
+    "allowed_values": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["value", "label"],
+        "properties": {
+          "value": {},
+          "label": {"type": "string"}
+        }
+      }
+    },
+    "question": {
+      "type": "string",
+      "minLength": 1
+    },
+    "sensitivity": {
+      "type": "string",
+      "enum": ["low", "medium", "high"]
+    },
+    "validity_days": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "review_status": {
+      "type": "string",
+      "enum": ["pending", "approved", "rejected"]
+    }
+  }
+}

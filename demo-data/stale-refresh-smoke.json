@@ -1,0 +1,40 @@
+{
+  "scenario": "STALE → 갱신 질문 → YES",
+  "policy_id": "demo-policy-v2",
+  "today": "2026-08-04",
+  "profile": {
+    "residence": {
+      "value": "강남구",
+      "updatedAt": "2026-08-04",
+      "validUntil": "2027-08-04",
+      "source": "user_input",
+      "sensitivity": "medium"
+    },
+    "age": {
+      "value": 35,
+      "updatedAt": "2026-08-04",
+      "validUntil": "2027-08-04",
+      "source": "user_input",
+      "sensitivity": "low"
+    },
+    "employment_status": {
+      "value": "unemployed",
+      "updatedAt": "2026-04-01",
+      "validUntil": "2026-07-01",
+      "source": "user_input",
+      "sensitivity": "medium"
+    },
+    "military_service_status": {
+      "value": "completed",
+      "updatedAt": "2026-08-04",
+      "validUntil": "2027-08-04",
+      "source": "user_input",
+      "sensitivity": "medium"
+    }
+  },
+  "stale_field": "employment_status",
+  "question": "현재도 미취업 상태인가요?",
+  "answer": "unemployed",
+  "expected_before": "STALE",
+  "expected_after": "YES"
+}

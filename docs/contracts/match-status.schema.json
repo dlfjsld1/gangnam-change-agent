@@ -1,0 +1,7 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gangnam-change-agent.local/contracts/match-status.schema.json",
+  "title": "MatchStatus",
+  "type": "string",
+  "enum": ["YES", "NO", "UNKNOWN", "STALE"]
+}

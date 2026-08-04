@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gangnam-change-agent.local/contracts/smoke-fixture.schema.json",
+  "title": "DynamicProfileSmokeFixture",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "scenario",
+    "policy_id",
+    "today",
+    "profile",
+    "question",
+    "answer",
+    "expected_before",
+    "expected_after"
+  ],
+  "properties": {
+    "scenario": {"type": "string"},
+    "policy_id": {"type": "string"},
+    "today": {"type": "string", "format": "date"},
+    "profile": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "profile-value.schema.json"
+      }
+    },
+    "missing_field": {"type": "string"},
+    "stale_field": {"type": "string"},
+    "question": {"type": "string"},
+    "answer": {},
+    "expected_before": {"$ref": "match-status.schema.json"},
+    "expected_after": {"$ref": "match-status.schema.json"}
+  },
+  "oneOf": [
+    {
+      "required": ["missing_field"],
+      "not": {"required": ["stale_field"]}
+    },
+    {
+      "required": ["stale_field"],
+      "not": {"required": ["missing_field"]}
+    }
+  ]
+}

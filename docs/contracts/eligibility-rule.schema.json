@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gangnam-change-agent.local/contracts/eligibility-rule.schema.json",
+  "title": "EligibilityRule",
+  "$ref": "#/$defs/rule",
+  "$defs": {
+    "condition": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["field", "operator", "value"],
+          "properties": {
+            "field": {"type": "string"},
+            "operator": {"enum": ["equals", "contains"]},
+            "value": {}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["field", "operator", "value"],
+          "properties": {
+            "field": {"type": "string"},
+            "operator": {"const": "in"},
+            "value": {"type": "array", "minItems": 1}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["field", "operator", "min", "max"],
+          "properties": {
+            "field": {"type": "string"},
+            "operator": {"const": "between"},
+            "min": {"type": "number"},
+            "max": {"type": "number"}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["field", "operator", "value"],
+          "properties": {
+            "field": {"type": "string"},
+            "operator": {"const": "exists"},
+            "value": {"type": "boolean"}
+          }
+        }
+      ]
+    },
+    "rule": {
+      "oneOf": [
+        {"$ref": "#/$defs/condition"},
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["and"],
+          "properties": {
+            "and": {
+              "type": "array",
+              "minItems": 1,
+              "items": {"$ref": "#/$defs/rule"}
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["or"],
+          "properties": {
+            "or": {
+              "type": "array",
+              "minItems": 1,
+              "items": {"$ref": "#/$defs/rule"}
+            }
+          }
+        }
+      ]
+    }
+  }
+}

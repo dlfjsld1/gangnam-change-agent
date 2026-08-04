@@ -1,0 +1,26 @@
+{
+  "demo_only": true,
+  "profile": {
+    "residence": {
+      "value": "강남구",
+      "updated_at": "2026-08-04",
+      "valid_until": "2027-08-04",
+      "source": "user_input",
+      "sensitivity": "medium"
+    },
+    "age": {
+      "value": 35,
+      "updated_at": "2026-08-04",
+      "valid_until": "2027-08-04",
+      "source": "user_input",
+      "sensitivity": "low"
+    },
+    "employment_status": {
+      "value": "unemployed",
+      "updated_at": "2026-04-01",
+      "valid_until": "2026-07-01",
+      "source": "user_input",
+      "sensitivity": "medium"
+    }
+  }
+}

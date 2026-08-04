@@ -1,0 +1,109 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gangnam-change-agent.local/contracts/policy-package.schema.json",
+  "title": "PolicyPackage",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "policy_id",
+    "policy_family_id",
+    "version",
+    "title",
+    "category",
+    "published_at",
+    "effective_at",
+    "deadline_at",
+    "summary",
+    "changes",
+    "eligibility_rule",
+    "required_profile_fields",
+    "required_actions",
+    "evidence",
+    "review"
+  ],
+  "properties": {
+    "policy_id": {"type": "string", "minLength": 1},
+    "policy_family_id": {"type": "string", "minLength": 1},
+    "version": {"type": "integer", "minimum": 1},
+    "title": {"type": "string", "minLength": 1},
+    "category": {"type": "string", "minLength": 1},
+    "published_at": {"type": "string", "format": "date"},
+    "effective_at": {"type": ["string", "null"], "format": "date"},
+    "deadline_at": {"type": ["string", "null"], "format": "date"},
+    "summary": {"type": "string", "minLength": 1},
+    "changes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["change_id", "field", "label", "before", "after", "change_type", "evidence_id"],
+        "properties": {
+          "change_id": {"type": "string"},
+          "field": {"type": "string"},
+          "label": {"type": "string"},
+          "before": {},
+          "after": {},
+          "change_type": {"type": "string"},
+          "impact_hint": {"type": "string"},
+          "evidence_id": {"type": "string"}
+        }
+      }
+    },
+    "eligibility_rule": {"$ref": "eligibility-rule.schema.json"},
+    "required_profile_fields": {
+      "type": "array",
+      "items": {
+        "$ref": "field-definition.schema.json"
+      }
+    },
+    "impact_scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "facilities": {"type": "array", "items": {"type": "string"}},
+        "stations": {"type": "array", "items": {"type": "string"}},
+        "bus_stops": {"type": "array", "items": {"type": "string"}},
+        "roads": {"type": "array", "items": {"type": "string"}},
+        "places": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "required_actions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["action_id", "label", "priority"],
+        "properties": {
+          "action_id": {"type": "string"},
+          "label": {"type": "string"},
+          "priority": {"type": "integer", "minimum": 1}
+        }
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["evidence_id", "source_type", "document_name", "location", "quote", "source_url"],
+        "properties": {
+          "evidence_id": {"type": "string"},
+          "source_type": {"type": "string"},
+          "document_name": {"type": "string"},
+          "location": {"type": "string"},
+          "quote": {"type": "string"},
+          "source_url": {"type": "string", "format": "uri"}
+        }
+      }
+    },
+    "review": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "reviewed_at"],
+      "properties": {
+        "status": {"type": "string", "enum": ["pending", "approved", "rejected"]},
+        "reviewed_at": {"type": ["string", "null"], "format": "date-time"}
+      }
+    }
+  }
+}

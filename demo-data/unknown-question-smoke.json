@@ -1,0 +1,33 @@
+{
+  "scenario": "UNKNOWN → 질문 → YES",
+  "policy_id": "demo-policy-v2",
+  "today": "2026-08-04",
+  "profile": {
+    "residence": {
+      "value": "강남구",
+      "updatedAt": "2026-08-04",
+      "validUntil": "2027-08-04",
+      "source": "user_input",
+      "sensitivity": "medium"
+    },
+    "age": {
+      "value": 35,
+      "updatedAt": "2026-08-04",
+      "validUntil": "2027-08-04",
+      "source": "user_input",
+      "sensitivity": "low"
+    },
+    "employment_status": {
+      "value": "unemployed",
+      "updatedAt": "2026-08-04",
+      "validUntil": "2026-11-04",
+      "source": "user_input",
+      "sensitivity": "medium"
+    }
+  },
+  "missing_field": "military_service_status",
+  "question": "병역 의무를 이행하셨나요?",
+  "answer": "completed",
+  "expected_before": "UNKNOWN",
+  "expected_after": "YES"
+}

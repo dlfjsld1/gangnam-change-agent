@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gangnam-change-agent.local/contracts/field-definition-proposal.schema.json",
+  "title": "FieldDefinitionProposal",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["proposed_field", "review_required", "review_reason"],
+  "properties": {
+    "proposed_field": {
+      "$ref": "field-definition.schema.json"
+    },
+    "review_required": {
+      "const": true
+    },
+    "review_reason": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

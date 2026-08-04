@@ -1,0 +1,18 @@
+{
+  "proposed_field": {
+    "key": "military_service_status",
+    "label": "병역 이행 상태",
+    "data_type": "enum",
+    "allowed_values": [
+      {"value": "completed", "label": "이행함"},
+      {"value": "not_completed", "label": "미이행"},
+      {"value": "exempted", "label": "면제"}
+    ],
+    "question": "병역 의무를 이행하셨나요?",
+    "sensitivity": "medium",
+    "validity_days": 365,
+    "review_status": "pending"
+  },
+  "review_required": true,
+  "review_reason": "원문의 군필자 범위에 면제자가 포함되는지 관리자 확인이 필요합니다."
+}

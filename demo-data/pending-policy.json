@@ -1,0 +1,36 @@
+{
+  "policy_id": "demo-policy-v2",
+  "policy_family_id": "demo-policy",
+  "version": 2,
+  "title": "청년 지원사업 변경",
+  "category": "지원사업",
+  "published_at": "2026-08-04",
+  "effective_at": "2026-08-05",
+  "deadline_at": "2026-09-10",
+  "summary": "데모용 검토 대기 정책 패키지입니다.",
+  "changes": [],
+  "eligibility_rule": {
+    "and": [
+      {"field": "military_service_status", "operator": "equals", "value": "completed"}
+    ]
+  },
+  "required_profile_fields": [
+    {
+      "key": "military_service_status",
+      "label": "병역 이행 상태",
+      "data_type": "enum",
+      "allowed_values": [
+        {"value": "completed", "label": "이행함"},
+        {"value": "not_completed", "label": "미이행"},
+        {"value": "exempted", "label": "면제"}
+      ],
+      "question": "병역 의무를 이행하셨나요?",
+      "sensitivity": "medium",
+      "validity_days": 365,
+      "review_status": "pending"
+    }
+  ],
+  "required_actions": [],
+  "evidence": [],
+  "review": {"status": "pending", "reviewed_at": null}
+}
