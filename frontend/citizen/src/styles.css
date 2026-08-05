@@ -287,6 +287,20 @@ input:focus-visible {
   text-underline-offset: 4px;
 }
 
+.profile-reset-button {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  margin-top: 8px;
+  color: #a04a4a;
+  font-size: 0.82rem;
+  font-weight: 700;
+  background: transparent;
+  border: 0;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
 .hero {
   min-height: 274px;
   padding: 32px 24px 58px;

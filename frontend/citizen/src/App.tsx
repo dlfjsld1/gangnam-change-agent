@@ -1,7 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { DynamicQuestion } from "./components/DynamicQuestion";
-import { loadFavoritePolicyIds, removeFavoritePolicy, saveFavoritePolicy } from "./feed/favoritePolicyStore";
+import {
+  clearFavoritePolicies,
+  loadFavoritePolicyIds,
+  removeFavoritePolicy,
+  saveFavoritePolicy,
+} from "./feed/favoritePolicyStore";
 import { hidePolicy, loadHiddenPolicyIds, restoreHiddenPolicies } from "./feed/hiddenPolicyStore";
 import { evaluateRule, selectNextQuestion } from "./matcher/evaluateRule";
 import type { MatchStatus } from "./matcher/evaluateRule";
@@ -9,7 +14,7 @@ import { loadApprovedPolicyPackages } from "./policy/policyApi";
 import type { PolicyPackage } from "./policy/policyPackage";
 import { recordAnswer } from "./profile/answerProfile";
 import type { FieldDefinition, LocalProfile } from "./profile/dynamicProfile";
-import { loadProfile, saveProfile } from "./profile/profileStore";
+import { clearProfile, loadProfile, saveProfile } from "./profile/profileStore";
 import policyFixture from "../../../demo-data/approved-policy.json";
 import userA from "../../../demo-data/user-a.json";
 import userB from "../../../demo-data/user-b.json";
@@ -119,6 +124,24 @@ export function App() {
     setFavoritePolicyIds((current) => [...new Set([...current, policyId])]);
   }
 
+  async function resetLocalData() {
+    if (!window.confirm("이 기기에 저장한 내 정보와 즐겨찾기를 모두 지울까요?")) {
+      return;
+    }
+    await Promise.all([
+      clearProfile(),
+      clearFavoritePolicies(),
+      restoreHiddenPolicies(),
+    ]);
+    setProfile({});
+    setHiddenPolicyIds([]);
+    setFavoritePolicyIds([]);
+    setDemoProfileName(undefined);
+    setDemoProfile(undefined);
+    setActiveTab("home");
+    setOnboardingMode("start");
+  }
+
   async function completeProfile(nextProfile: LocalProfile) {
     await saveProfile(nextProfile);
     setProfile(nextProfile);
@@ -143,6 +166,7 @@ export function App() {
           fields={(policies[0] ?? fixturePolicies[0]).required_profile_fields}
           onEdit={() => setOnboardingMode("edit")}
           onPreviewIntro={() => setOnboardingMode("preview")}
+          onReset={resetLocalData}
           profile={profile}
         />
       ) : <>
@@ -213,6 +237,7 @@ function ProfilePage(props: {
   fields: FieldDefinition[];
   onEdit: () => void;
   onPreviewIntro: () => void;
+  onReset: () => Promise<void>;
   profile: LocalProfile;
 }) {
   const fields = props.fields.filter((field) => field.review_status === "approved");
@@ -235,6 +260,7 @@ function ProfilePage(props: {
       </section>
       <button className="profile-edit-button" onClick={props.onEdit} type="button">정보 수정하기</button>
       <button className="profile-intro-button" onClick={props.onPreviewIntro} type="button">서비스 소개 다시 보기</button>
+      <button className="profile-reset-button" onClick={() => void props.onReset()} type="button">이 기기에서 내 정보 삭제</button>
     </section>
   );
 }

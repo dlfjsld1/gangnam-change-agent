@@ -41,6 +41,19 @@ export async function removeFavoritePolicy(policyId: string): Promise<void> {
 }
 
 
+export async function clearFavoritePolicies(): Promise<void> {
+  const database = await openDatabase();
+  await new Promise<void>((resolve, reject) => {
+    const request = database
+      .transaction(FAVORITE_POLICY_STORE, "readwrite")
+      .objectStore(FAVORITE_POLICY_STORE)
+      .clear();
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error);
+  });
+}
+
+
 function openDatabase(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DATABASE_NAME, DATABASE_VERSION);

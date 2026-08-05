@@ -50,7 +50,7 @@
 ## Components
 
 - Existing components to reuse: `DynamicQuestion`, 로컬 프로필·matcher 모듈
-- New/changed components: 정책 카드, 상태 배지, 원형 즐겨찾기 버튼, 개인정보 원칙·3가지 안내를 담은 인트로, 첫 실행 정보 입력, 저장 프로필 목록·수정, 하단 탐색
+- New/changed components: 정책 카드, 상태 배지, 원형 즐겨찾기 버튼, 개인정보 원칙·3가지 안내를 담은 인트로, 첫 실행 정보 입력, 저장 프로필 목록·수정·로컬 데이터 삭제, 하단 탐색
 - Variants and states: YES/NO/UNKNOWN/STALE, 숨김, 즐겨찾기, 빈 상태, 질문 저장 중
 - Token/component ownership: 시민 PWA의 CSS 변수와 `frontend/citizen/**`
 
