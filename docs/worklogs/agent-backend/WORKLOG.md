@@ -60,7 +60,7 @@
 
 #### Contract impact
 
-D-008과 관리자 상세 응답의 additive `source_notice`를 추가했다. PolicyPackage와 Evidence JSON Schema는 변경하지 않았다.
+D-008과 관리자 상세 응답의 additive `source_notice`를 추가했다. PolicyPackage와 Evidence JSON Schema는 변경하지 않았다. 관리자·시민 담당이 바로 연결할 수 있도록 `docs/contracts/PUBLIC_ATTACHMENT_FRONTEND_INTEGRATION.md`에 읽기 순서, 화면 동작과 완료 조건을 인계했다.
 
 #### Validation
 

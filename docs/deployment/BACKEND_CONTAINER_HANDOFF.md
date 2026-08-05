@@ -18,7 +18,8 @@
 2. 이 문서
 3. `docs/DECISIONS.md`의 D-005, D-006, D-007
 4. `docs/contracts/api.md`
-5. `docs/worklogs/admin-integration/WORKLOG.md`
+5. `docs/contracts/PUBLIC_ATTACHMENT_FRONTEND_INTEGRATION.md`
+6. `docs/worklogs/admin-integration/WORKLOG.md`
 
 API 구현 상태를 판단해야 할 때만
 `docs/worklogs/agent-backend/WORKLOG.md`의 `Current status`와 `Next actions`를
