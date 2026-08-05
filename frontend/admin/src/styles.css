@@ -84,6 +84,7 @@ input { width: 100%; padding: 11px 12px; border: 1px solid #d8ded8; border-radiu
 .privacy h2 { margin: 0 0 10px; }
 .privacy p { margin: 0 0 8px; }
 .privacy small { color: #b9d0c5; }
+.privacy a { color: #d9f5e7; }
 
 @media (max-width: 760px) {
   .admin-page { padding: 28px 14px 50px; }

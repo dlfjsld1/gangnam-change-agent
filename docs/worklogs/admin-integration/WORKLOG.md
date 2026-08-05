@@ -9,6 +9,7 @@
 - Current milestone: fixture 기반 관리자 검토 화면
 - Working: Vite 앱, FieldDefinitionReview 목록·상세, evidence·canonical field 후보, 승인·수정·반려, AgentRun 로그, API 실패 fallback
 - In progress: 실제 Backend 관리자 API 연결
+- S3 공개 첨부 archive용 Terraform과 Admin 원본·공개 URL 표시 구현 완료, AWS apply 미실행
 - Not implemented: 승인된 정책의 시민 앱 통합 확인, 배포
 - Blockers: 계약에 맞춘 관리자 API 구현 필요
 
@@ -186,3 +187,29 @@ Private RDS PostgreSQL, Secrets Manager, ECR, App Runner VPC Connector와 외부
 - ECS service stable: passed
 - `GET /api/agent-runs`: HTTP 200, admin CORS passed
 - `GET /api/admin/policy-packages`: HTTP 200, admin CORS passed
+
+### 2026-08-05 — 공개 근거 첨부 S3·Admin 통합
+
+#### Summary
+
+전용 비공개 S3와 CloudFront OAC를 구성하고 ECS task role에 `public-attachments/` 업로드 권한과 archive 환경변수를 연결했다. Admin 실행 상세는 원본 공고와 첨부를 표시하고, 정책 승인 후 연결된 실행을 재조회해 `public_url`로 갱신하며 409와 503을 구분한다.
+
+#### Tests
+
+- `terraform -chdir=infra validate`: passed
+- `frontend/admin`: `npm.cmd run build` passed
+- AWS plan/apply 및 실제 S3 업로드: 미실행
+
+### 2026-08-05 — OpenAI Secret 연결과 공개첨부 인프라 배포
+
+#### Summary
+
+기존 Secrets Manager JSON의 `DATABASE_URL`과 `OPENAI_API_KEY`를 ECS secret 환경변수로 각각 연결했다. 공개첨부 S3·CloudFront와 ECS 업로드 task role도 Terraform으로 적용했다.
+
+#### Tests
+
+- `terraform -chdir=infra apply`: passed
+- 최종 `terraform -chdir=infra plan -detailed-exitcode`: No changes
+- ECS task definition revision 3: RUNNING, desired/running 1/1
+- 배포 backend `/health`: `status=ok`
+- 실제 OpenAI API 호출과 S3 첨부 업로드: 미실행

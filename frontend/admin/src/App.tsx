@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
-import { loadAdminData, loadRunDetail, submitPolicyReview, submitReview } from "./api";
-import type { AgentRun, FieldDefinition, FieldDefinitionReview, PolicyPackage, ReviewStatus } from "./types";
+import { ApiError, loadAdminData, loadRunDetail, submitPolicyReview, submitReview } from "./api";
+import type { AgentRun, FieldDefinition, FieldDefinitionReview, PolicyPackage, ReviewStatus, SourceNotice } from "./types";
 
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 
@@ -21,6 +21,7 @@ export function App() {
   const [run, setRun] = useState(EMPTY_RUN);
   const [runs, setRuns] = useState<AgentRun[]>([]);
   const [policies, setPolicies] = useState<PolicyPackage[]>([]);
+  const [sourceNotice, setSourceNotice] = useState<SourceNotice | null>(null);
   const [source, setSource] = useState<"api" | "fixture">("fixture");
   const [draft, setDraft] = useState<FieldDefinition | null>(null);
   const [message, setMessage] = useState("검토 데이터를 불러오는 중입니다.");
@@ -31,6 +32,7 @@ export function App() {
       setRun(data.run);
       setRuns(data.runs);
       setPolicies(data.policies);
+      setSourceNotice(data.sourceNotice);
       setSource(data.source);
       setSelectedId(data.reviews[0]?.review_id ?? "");
       setMessage(data.source === "api" ? "Backend API에 연결되었습니다." : "API 미연결: demo fixture로 동작 중입니다.");
@@ -76,6 +78,7 @@ export function App() {
       const detail = await loadRunDetail(runId);
       setRun(detail.agent_run);
       setReviews(detail.field_definition_reviews);
+      setSourceNotice(detail.source_notice);
       setSelectedId(detail.field_definition_reviews[0]?.review_id ?? "");
     } catch (error) {
       setMessage(`실행 상세 조회 실패: ${error instanceof Error ? error.message : "알 수 없는 오류"}`);
@@ -86,9 +89,20 @@ export function App() {
     try {
       const updated = await submitPolicyReview(policyId, action);
       setPolicies((current) => current.map((policy) => policy.policy_id === policyId ? updated : policy));
+      const runId = runs.find((item) => item.policy_id === policyId)?.run_id;
+      if (action === "approve" && runId) {
+        const detail = await loadRunDetail(runId);
+        setRun(detail.agent_run);
+        setSourceNotice(detail.source_notice);
+      }
       setMessage(action === "approve" ? "정책을 승인하고 시민 API에 공개했습니다." : "정책을 반려했습니다.");
     } catch (error) {
-      setMessage(`정책 처리 실패: ${error instanceof Error ? error.message : "알 수 없는 오류"}`);
+      const prefix = error instanceof ApiError && error.status === 409
+        ? "승인 불가"
+        : error instanceof ApiError && error.status === 503
+          ? "첨부 저장 실패·재시도 필요"
+          : "정책 처리 실패";
+      setMessage(`${prefix}: ${error instanceof Error ? error.message : "알 수 없는 오류"}`);
     }
   }
   return (
@@ -176,6 +190,15 @@ export function App() {
           {runs.map((item) => <button key={item.run_id} onClick={() => void selectRun(item.run_id)} type="button">{item.run_id} · {item.status}</button>)}
         </div>
       </section>
+
+      {sourceNotice && <section className="privacy">
+        <h2>원본 공고·첨부</h2>
+        <p><a href={sourceNotice.source_url} target="_blank" rel="noopener noreferrer">{sourceNotice.title}</a></p>
+        {sourceNotice.attachments.map((attachment) => <p key={attachment.url}>
+          <a href={attachment.public_url ?? attachment.url} target="_blank" rel="noopener noreferrer">{attachment.filename}</a>
+          <small> · {attachment.public_url ? "공개 URL" : "원본 URL"}</small>
+        </p>)}
+      </section>}
 
       <section className="privacy">
         <h2>정책 검토</h2>

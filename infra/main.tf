@@ -278,6 +278,7 @@ resource "aws_ecs_task_definition" "backend" {
   cpu                      = 512
   memory                   = 1024
   execution_role_arn       = aws_iam_role.ecs_execution.arn
+  task_role_arn            = aws_iam_role.ecs_task.arn
 
   container_definitions = jsonencode([
     {
@@ -294,12 +295,32 @@ resource "aws_ecs_task_definition" "backend" {
         {
           name  = "BACKEND_CORS_ORIGINS"
           value = join(",", local.cors_origins)
+        },
+        {
+          name  = "S3_ATTACHMENT_BUCKET"
+          value = aws_s3_bucket.public_attachments.id
+        },
+        {
+          name  = "S3_ATTACHMENT_REGION"
+          value = var.aws_region
+        },
+        {
+          name  = "S3_ATTACHMENT_PREFIX"
+          value = "public-attachments"
+        },
+        {
+          name  = "PUBLIC_ATTACHMENT_BASE_URL"
+          value = "https://${aws_cloudfront_distribution.public_attachments.domain_name}"
         }
       ]
       secrets = [
         {
           name      = "DATABASE_URL"
-          valueFrom = aws_secretsmanager_secret.database_url.arn
+          valueFrom = "${aws_secretsmanager_secret.database_url.arn}:DATABASE_URL::"
+        },
+        {
+          name      = "OPENAI_API_KEY"
+          valueFrom = "${aws_secretsmanager_secret.database_url.arn}:OPENAI_API_KEY::"
         }
       ]
       logConfiguration = {

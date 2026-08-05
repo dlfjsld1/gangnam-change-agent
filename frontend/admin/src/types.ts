@@ -58,8 +58,22 @@ export interface PolicyPackage {
   };
 }
 
+export interface SourceNotice {
+  source_url: string;
+  title: string;
+  attachments: Array<{
+    filename: string;
+    url: string;
+    file_type: string;
+    storage_key: string | null;
+    public_url: string | null;
+    sha256: string | null;
+  }>;
+}
+
 export interface AdminRunDetail {
   agent_run: AgentRun;
+  source_notice: SourceNotice | null;
   policy_package: PolicyPackage | null;
   field_definition_reviews: FieldDefinitionReview[];
 }

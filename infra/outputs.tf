@@ -40,3 +40,7 @@ output "frontend_distribution_ids" {
     for name, distribution in aws_cloudfront_distribution.frontend : name => distribution.id
   }
 }
+
+output "public_attachment_url" {
+  value = "https://${aws_cloudfront_distribution.public_attachments.domain_name}"
+}

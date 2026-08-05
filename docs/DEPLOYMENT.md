@@ -9,12 +9,17 @@
 - 이미지: Amazon ECR
 - 비밀정보: Secrets Manager의 DATABASE_URL
 - 외부 공고 접근: private subnet → NAT Gateway
+- 공개 근거 첨부: 비공개 S3 `public-attachments/` → CloudFront HTTPS
 
 App Runner는 서울 리전을 지원하지 않으므로 사용하지 않는다.
 
 ## 현재 backend URL
 
 https://d25409t9vvq1vj.cloudfront.net
+
+## 공개 근거 첨부 URL
+
+https://dpjy1ffhia6ml.cloudfront.net
 
 ## 배포 확인
 

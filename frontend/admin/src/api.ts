@@ -1,14 +1,21 @@
 import { fixtureReviews, fixtureRun } from "./fixture";
-import type { AdminRunDetail, AgentRun, FieldDefinition, FieldDefinitionReview, PolicyPackage, ReviewStatus } from "./types";
+import type { AdminRunDetail, AgentRun, FieldDefinition, FieldDefinitionReview, PolicyPackage, ReviewStatus, SourceNotice } from "./types";
 
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${apiBaseUrl}${path}`, init);
   if (!response.ok) {
-    throw new Error(`${response.status} ${response.statusText}`);
+    const detail = await response.json().then((body) => body.detail as string).catch(() => response.statusText);
+    throw new ApiError(response.status, detail);
   }
   return response.json() as Promise<T>;
+}
+
+export class ApiError extends Error {
+  constructor(public status: number, message: string) {
+    super(message);
+  }
 }
 
 export async function loadAdminData(): Promise<{
@@ -16,6 +23,7 @@ export async function loadAdminData(): Promise<{
   run: AgentRun;
   runs: AgentRun[];
   policies: PolicyPackage[];
+  sourceNotice: SourceNotice | null;
   source: "api" | "fixture";
 }> {
   try {
@@ -26,12 +34,12 @@ export async function loadAdminData(): Promise<{
     ]);
     const runId = reviews[0]?.run_id ?? runs[0]?.run_id;
     if (!runId) {
-      return { reviews, run: fixtureRun, runs, policies, source: "api" };
+      return { reviews, run: fixtureRun, runs, policies, sourceNotice: null, source: "api" };
     }
     const detail = await loadRunDetail(runId);
-    return { reviews, run: detail.agent_run, runs, policies, source: "api" };
+    return { reviews, run: detail.agent_run, runs, policies, sourceNotice: detail.source_notice, source: "api" };
   } catch {
-    return { reviews: fixtureReviews, run: fixtureRun, runs: [fixtureRun], policies: [], source: "fixture" };
+    return { reviews: fixtureReviews, run: fixtureRun, runs: [fixtureRun], policies: [], sourceNotice: null, source: "fixture" };
   }
 }
 
