@@ -293,7 +293,7 @@ resource "aws_ecs_task_definition" "backend" {
       environment = [
         {
           name  = "BACKEND_CORS_ORIGINS"
-          value = var.backend_cors_origins
+          value = join(",", local.cors_origins)
         }
       ]
       secrets = [

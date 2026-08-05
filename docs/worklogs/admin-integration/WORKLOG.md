@@ -2,6 +2,8 @@
 
 ## Current status
 
+- Admin API integration now covers run list/detail, field reviews, and policy package approve/reject.
+
 - AWS backend deployed: ECS Fargate + ALB + CloudFront, https://d25409t9vvq1vj.cloudfront.net
 
 - Current milestone: fixture 기반 관리자 검토 화면
@@ -105,3 +107,82 @@ Private RDS PostgreSQL, Secrets Manager, ECR, App Runner VPC Connector와 외부
 - ALB target health: healthy
 - HTTPS health and API smoke: HTTP 200
 - CloudWatch: Alembic PostgreSQL migration and Uvicorn startup passed
+### 2026-08-05 — 관리자 API 검토·공개 흐름 연결
+
+#### Summary
+
+관리자 화면을 AgentRun 목록·상세와 관리자용 PolicyPackage 목록 API에 연결하고 정책 승인·반려 결과를 즉시 반영하도록 구현했다. 기존 필드 검토와 API 실패 시 fixture fallback은 유지했다.
+
+#### Changed files
+
+- `frontend/admin/src/api.ts`
+- `frontend/admin/src/App.tsx`
+- `frontend/admin/src/types.ts`
+
+#### Contract impact
+
+없음. 기존 `docs/contracts/api.md` 경로와 payload를 사용한다.
+
+#### Tests
+
+- `frontend/admin`: `npm.cmd run build` passed
+- `frontend/citizen`: `npm.cmd run build` passed
+- `backend`: `python -m pytest tests/test_main.py tests/test_deployment_smoke.py` — 17 passed
+
+#### Remaining work
+
+- 배포 API를 대상으로 관리자 승인 후 시민 PWA 공개까지 브라우저 E2E smoke 확인
+- 관리자·시민 프론트 배포 환경에 `VITE_API_BASE_URL` 설정
+
+### 2026-08-05 — 프로덕션 API 주소 연결
+
+#### Summary
+
+관리자 프로덕션 빌드의 `VITE_API_BASE_URL`을 Terraform `backend_url` 출력값으로 설정했다.
+
+#### Tests
+
+- `terraform output -raw backend_url`: `https://d25409t9vvq1vj.cloudfront.net`
+- `frontend/admin`: `npm.cmd run build` passed
+- 빌드 JavaScript에서 CloudFront 주소 확인
+
+### 2026-08-05 — 관리자·시민 프론트 AWS 배포
+
+#### Summary
+
+관리자와 시민 프론트를 각각 비공개 S3와 CloudFront OAC로 배포했다. Terraform이 두 프론트 origin을 백엔드 CORS에 자동 반영하도록 연결했다.
+
+#### Changed files
+
+- `infra/frontend.tf`
+- `infra/main.tf`
+- `infra/outputs.tf`
+- `docs/DEPLOYMENT.md`
+
+#### Tests
+
+- `terraform fmt -recursive`: passed
+- `terraform validate`: passed
+- `terraform apply`: 11 added, 1 changed, 1 replaced
+- 최종 `terraform plan -detailed-exitcode`: No changes
+- 관리자 CloudFront: HTTP 200
+- 시민 CloudFront: HTTP 200
+- 관리자·시민 origin의 API CORS header 확인: passed
+
+#### Remaining work
+
+- 연결 가능한 브라우저 환경에서 실제 UI smoke 확인
+
+### 2026-08-05 — 배포 백엔드 API 이미지 갱신
+
+#### Summary
+
+관리자 화면이 fixture fallback으로 전환된 원인은 배포 ECR 이미지가 `/api/agent-runs`와 `/api/admin/policy-packages` 구현 이전 버전이었던 것이다. 현재 백엔드 이미지로 ECR `latest`를 갱신하고 ECS rolling deployment를 완료했다.
+
+#### Tests
+
+- backend Docker build: passed
+- ECR push digest: `sha256:9298f4d6afbbdd4fa166e5a59aaa69e89c4f2218b783b70f73a39c66c763e57f`
+- ECS service stable: passed
+- `GET /api/agent-runs`: HTTP 200, admin CORS passed
+- `GET /api/admin/policy-packages`: HTTP 200, admin CORS passed

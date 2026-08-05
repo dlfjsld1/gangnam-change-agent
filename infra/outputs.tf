@@ -22,3 +22,21 @@ output "database_url_secret_arn" {
 output "backend_url" {
   value = "https://${aws_cloudfront_distribution.backend.domain_name}"
 }
+
+output "frontend_urls" {
+  value = {
+    for name, distribution in aws_cloudfront_distribution.frontend : name => "https://${distribution.domain_name}"
+  }
+}
+
+output "frontend_bucket_names" {
+  value = {
+    for name, bucket in aws_s3_bucket.frontend : name => bucket.id
+  }
+}
+
+output "frontend_distribution_ids" {
+  value = {
+    for name, distribution in aws_cloudfront_distribution.frontend : name => distribution.id
+  }
+}

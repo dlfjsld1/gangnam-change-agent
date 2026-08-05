@@ -284,3 +284,26 @@ fixture 정책의 승인된 required profile field를 DynamicQuestion 입력으�
 - `npm.cmd test`: 8 passed
 - `npm.cmd run build`: passed
 - 브라우저 확인: 초기화된 로컬 저장 상태에서 인트로 표시 확인
+
+### 2026-08-05 — 프로덕션 API 주소 연결
+
+#### Summary
+
+시민 PWA 프로덕션 빌드의 `VITE_API_BASE_URL`을 Terraform `backend_url` 출력값으로 설정했다.
+
+#### Tests
+
+- `frontend/citizen`: `npm.cmd run build` passed
+- 빌드 JavaScript에서 CloudFront 주소 확인
+
+### 2026-08-05 — 시민 PWA AWS 배포
+
+#### Summary
+
+시민 PWA 프로덕션 빌드를 비공개 S3와 CloudFront OAC로 배포하고 백엔드 API CORS 연결을 확인했다.
+
+#### Tests
+
+- `npm.cmd run build`: passed
+- https://d30pysa0iyz6g5.cloudfront.net: HTTP 200
+- 시민 origin의 `/api/policy-packages` CORS header 확인: passed

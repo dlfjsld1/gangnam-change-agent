@@ -32,3 +32,22 @@ https://d25409t9vvq1vj.cloudfront.net
     terraform -chdir=infra destroy
 
 RDS, NAT Gateway, ALB, CloudFront, ECS는 실행 중 비용이 발생한다. destroy 전에 필요한 데이터 보존 여부를 확인한다.
+
+## 프론트엔드 배포
+
+- 관리자: https://d25mh7hdavvr2k.cloudfront.net
+- 시민 PWA: https://d30pysa0iyz6g5.cloudfront.net
+- Origin: 비공개 S3 bucket
+- 공개 경로: CloudFront HTTPS → S3 OAC
+- 두 프론트 origin은 ECS의 `BACKEND_CORS_ORIGINS`에 Terraform으로 자동 반영한다.
+
+재배포:
+
+```powershell
+npm.cmd --prefix frontend/admin run build
+npm.cmd --prefix frontend/citizen run build
+aws s3 sync frontend/admin/dist/ s3://$(terraform -chdir=infra output -json frontend_bucket_names | ConvertFrom-Json | Select-Object -ExpandProperty admin)/ --delete
+aws s3 sync frontend/citizen/dist/ s3://$(terraform -chdir=infra output -json frontend_bucket_names | ConvertFrom-Json | Select-Object -ExpandProperty citizen)/ --delete
+```
+
+업로드 후 `frontend_distribution_ids` 출력값으로 CloudFront invalidation을 실행한다.

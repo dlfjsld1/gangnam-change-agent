@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
-import { loadAdminData, submitReview } from "./api";
-import type { AgentRun, FieldDefinition, FieldDefinitionReview, ReviewStatus } from "./types";
+import { loadAdminData, loadRunDetail, submitPolicyReview, submitReview } from "./api";
+import type { AgentRun, FieldDefinition, FieldDefinitionReview, PolicyPackage, ReviewStatus } from "./types";
 
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 
@@ -19,6 +19,8 @@ export function App() {
   const [reviews, setReviews] = useState<FieldDefinitionReview[]>([]);
   const [selectedId, setSelectedId] = useState("");
   const [run, setRun] = useState(EMPTY_RUN);
+  const [runs, setRuns] = useState<AgentRun[]>([]);
+  const [policies, setPolicies] = useState<PolicyPackage[]>([]);
   const [source, setSource] = useState<"api" | "fixture">("fixture");
   const [draft, setDraft] = useState<FieldDefinition | null>(null);
   const [message, setMessage] = useState("검토 데이터를 불러오는 중입니다.");
@@ -27,6 +29,8 @@ export function App() {
     void loadAdminData().then((data) => {
       setReviews(data.reviews);
       setRun(data.run);
+      setRuns(data.runs);
+      setPolicies(data.policies);
       setSource(data.source);
       setSelectedId(data.reviews[0]?.review_id ?? "");
       setMessage(data.source === "api" ? "Backend API에 연결되었습니다." : "API 미연결: demo fixture로 동작 중입니다.");
@@ -64,6 +68,29 @@ export function App() {
     setMessage(action === "rejected" ? "제안을 반려했습니다." : "검토 결과를 저장했습니다. 승인된 필드는 정책 패키지 공개 후보가 됩니다.");
   }
 
+  async function selectRun(runId: string) {
+    if (source !== "api") {
+      return;
+    }
+    try {
+      const detail = await loadRunDetail(runId);
+      setRun(detail.agent_run);
+      setReviews(detail.field_definition_reviews);
+      setSelectedId(detail.field_definition_reviews[0]?.review_id ?? "");
+    } catch (error) {
+      setMessage(`실행 상세 조회 실패: ${error instanceof Error ? error.message : "알 수 없는 오류"}`);
+    }
+  }
+
+  async function decidePolicy(policyId: string, action: "approve" | "reject") {
+    try {
+      const updated = await submitPolicyReview(policyId, action);
+      setPolicies((current) => current.map((policy) => policy.policy_id === policyId ? updated : policy));
+      setMessage(action === "approve" ? "정책을 승인하고 시민 API에 공개했습니다." : "정책을 반려했습니다.");
+    } catch (error) {
+      setMessage(`정책 처리 실패: ${error instanceof Error ? error.message : "알 수 없는 오류"}`);
+    }
+  }
   return (
     <main className="admin-page">
       <header className="hero">
@@ -143,6 +170,27 @@ export function App() {
         <ol>{run.node_logs.map((log) => <li key={`${log.node}-${log.message}`}><span>{log.node}</span><p>{log.message}</p><small>{log.status}</small></li>)}</ol>
       </section>
 
+      <section className="privacy">
+        <h2>Agent 실행 목록</h2>
+        <div className="actions">
+          {runs.map((item) => <button key={item.run_id} onClick={() => void selectRun(item.run_id)} type="button">{item.run_id} · {item.status}</button>)}
+        </div>
+      </section>
+
+      <section className="privacy">
+        <h2>정책 검토</h2>
+        {policies.map((policy) => (
+          <article className="reason" key={policy.policy_id}>
+            <strong>{policy.title}</strong>
+            <p>{policy.summary}</p>
+            <small>{policy.policy_id} · {policy.review.status}</small>
+            {policy.review.status === "pending" && <div className="actions">
+              <button className="reject" onClick={() => void decidePolicy(policy.policy_id, "reject")} type="button">반려</button>
+              <button className="approve" onClick={() => void decidePolicy(policy.policy_id, "approve")} type="button">승인·공개</button>
+            </div>}
+          </article>
+        ))}
+      </section>
       <section className="privacy">
         <h2>개인정보 보호 현황</h2>
         <p>서버 저장 사용자 나이 0건 · 거주지역 0건 · 고용 상태 0건 · 개인 프로필 0건</p>
