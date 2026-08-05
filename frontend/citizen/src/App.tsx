@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { DynamicQuestion } from "./components/DynamicQuestion";
+import { loadFavoritePolicyIds, removeFavoritePolicy, saveFavoritePolicy } from "./feed/favoritePolicyStore";
 import { hidePolicy, loadHiddenPolicyIds, restoreHiddenPolicies } from "./feed/hiddenPolicyStore";
 import { evaluateRule, selectNextQuestion } from "./matcher/evaluateRule";
 import type { MatchStatus } from "./matcher/evaluateRule";
@@ -44,6 +45,7 @@ export function App() {
   const [ready, setReady] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [hiddenPolicyIds, setHiddenPolicyIds] = useState<string[]>([]);
+  const [favoritePolicyIds, setFavoritePolicyIds] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState("home");
   const [demoProfileName, setDemoProfileName] = useState<"A" | "B" | undefined>();
   const [demoProfile, setDemoProfile] = useState<LocalProfile>();
@@ -54,14 +56,16 @@ export function App() {
     void Promise.all([
       loadProfile(),
       loadHiddenPolicyIds(),
+      loadFavoritePolicyIds(),
       loadApprovedPolicyPackages(
         fetchPolicyPackages,
         fixturePolicies,
       ),
     ])
-      .then(([savedProfile, savedHiddenPolicyIds, policyResult]) => {
+      .then(([savedProfile, savedHiddenPolicyIds, savedFavoritePolicyIds, policyResult]) => {
         setProfile(savedProfile);
         setHiddenPolicyIds(savedHiddenPolicyIds);
+        setFavoritePolicyIds(savedFavoritePolicyIds);
         setPolicies(policyResult.policies);
         setPolicySource(policyResult.source);
         if (Object.keys(savedProfile).length === 0) {
@@ -75,6 +79,9 @@ export function App() {
     () => policies.filter((policy) => !hiddenPolicyIds.includes(policy.policy_id)),
     [hiddenPolicyIds, policies],
   );
+  const feedPolicies = activeTab === "favorites"
+    ? visiblePolicies.filter((policy) => favoritePolicyIds.includes(policy.policy_id))
+    : visiblePolicies;
   const activeProfile = demoProfile ?? profile;
 
   async function saveAnswer(field: FieldDefinition, value: unknown) {
@@ -100,6 +107,16 @@ export function App() {
   async function restorePolicies() {
     await restoreHiddenPolicies();
     setHiddenPolicyIds([]);
+  }
+
+  async function toggleFavoritePolicy(policyId: string) {
+    if (favoritePolicyIds.includes(policyId)) {
+      await removeFavoritePolicy(policyId);
+      setFavoritePolicyIds((current) => current.filter((id) => id !== policyId));
+      return;
+    }
+    await saveFavoritePolicy(policyId);
+    setFavoritePolicyIds((current) => [...new Set([...current, policyId])]);
   }
 
   async function completeProfile(nextProfile: LocalProfile) {
@@ -133,19 +150,21 @@ export function App() {
           <p>강남 Change Agent</p>
           <button aria-label="알림" className="icon-button" type="button">♧</button>
         </div>
-        <h1>나에게 관련된 변화 {visiblePolicies.length}개</h1>
-        <p>내 정보는 이 기기 안에서만 비교돼요.</p>
+        <h1>{activeTab === "favorites" ? `즐겨찾기 ${feedPolicies.length}개` : `나에게 관련된 변화 ${visiblePolicies.length}개`}</h1>
+        <p>{activeTab === "favorites" ? "별을 눌러 담아둔 공고예요." : "내 정보는 이 기기 안에서만 비교돼요."}</p>
       </header>
 
       <div className="feed-panel">
         {policySource === "fixture" && ready && <p className="fixture-note">데모 정책을 보여드리고 있어요.</p>}
         {!ready && <p className="loading-copy">내 정보를 불러오는 중입니다.</p>}
 
-        {ready && visiblePolicies.map((policy) => (
+        {ready && feedPolicies.map((policy) => (
           <PolicyCard
+            isFavorite={favoritePolicyIds.includes(policy.policy_id)}
             isSaving={isSaving}
             key={policy.policy_id}
             onAnswer={saveAnswer}
+            onFavorite={toggleFavoritePolicy}
             onHide={hideCurrentPolicy}
             onShowDetails={setSelectedPolicy}
             policy={policy}
@@ -153,11 +172,14 @@ export function App() {
           />
         ))}
 
-        {ready && policies.length > 0 && visiblePolicies.length === 0 && (
+        {ready && activeTab === "home" && policies.length > 0 && visiblePolicies.length === 0 && (
           <section className="empty-feed">
             <p>숨긴 변화가 있어요.</p>
             <button onClick={restorePolicies} type="button">숨긴 카드 다시 보기</button>
           </section>
+        )}
+        {ready && activeTab === "favorites" && feedPolicies.length === 0 && (
+          <section className="empty-feed"><p>아직 즐겨찾기한 공고가 없어요.</p><p>홈에서 별을 눌러 담아보세요.</p></section>
         )}
         {ready && policies.length === 0 && (
           <section className="empty-feed"><p>지금은 새로 확인할 변화가 없어요.</p></section>
@@ -176,7 +198,7 @@ export function App() {
 
       <nav aria-label="주요 메뉴" className="bottom-nav">
         <button aria-current={activeTab === "home" ? "page" : undefined} onClick={() => setActiveTab("home")} type="button">⌂<span>홈</span></button>
-        <button aria-current={activeTab === "changes" ? "page" : undefined} onClick={() => setActiveTab("changes")} type="button">▤<span>전체 변경</span></button>
+        <button aria-current={activeTab === "favorites" ? "page" : undefined} onClick={() => setActiveTab("favorites")} type="button">★<span>즐겨찾기</span></button>
         <button aria-current={activeTab === "profile" ? "page" : undefined} onClick={() => setActiveTab("profile")} type="button">♙<span>내 정보</span></button>
       </nav>
       {selectedPolicy && <PolicyDetail policy={selectedPolicy} onClose={() => setSelectedPolicy(undefined)} />}
@@ -212,8 +234,10 @@ function ProfilePage(props: { fields: FieldDefinition[]; onEdit: () => void; pro
 
 
 interface PolicyCardProps {
+  isFavorite: boolean;
   isSaving: boolean;
   onAnswer: (field: FieldDefinition, value: unknown) => Promise<void>;
+  onFavorite: (policyId: string) => Promise<void>;
   onHide: (policyId: string) => Promise<void>;
   onShowDetails: (policy: PolicyPackage) => void;
   policy: PolicyPackage;
@@ -235,7 +259,16 @@ function PolicyCard(props: PolicyCardProps) {
     <article className="policy-card">
       <div className="card-topline">
         <span className={`status-chip status-${status.toLowerCase()}`}>{statusLabel(status)}</span>
-        <button className="hide-button" onClick={() => props.onHide(props.policy.policy_id)} type="button">숨기기</button>
+        <div className="card-actions">
+          <button
+            aria-label={`${props.policy.title} ${props.isFavorite ? "즐겨찾기 해제" : "즐겨찾기"}`}
+            aria-pressed={props.isFavorite}
+            className="favorite-button"
+            onClick={() => void props.onFavorite(props.policy.policy_id)}
+            type="button"
+          >★</button>
+          <button className="hide-button" onClick={() => props.onHide(props.policy.policy_id)} type="button">숨기기</button>
+        </div>
       </div>
       <p className="policy-category">✦ {props.policy.category}</p>
       <h2>{props.policy.title}</h2>

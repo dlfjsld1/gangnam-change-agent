@@ -311,6 +311,31 @@ input:focus-visible {
   gap: 12px;
 }
 
+.card-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.favorite-button {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  color: #aab5c6;
+  font-size: 1.05rem;
+  background: #fff;
+  border: 1px solid #dbe3ef;
+  border-radius: 50%;
+  place-items: center;
+}
+
+.favorite-button[aria-pressed="true"] {
+  color: #fff;
+  background: #2168e8;
+  border-color: #2168e8;
+}
+
 .status-chip {
   display: inline-flex;
   align-items: center;
