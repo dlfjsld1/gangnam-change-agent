@@ -158,3 +158,13 @@ fixture 정책의 승인된 required profile field를 DynamicQuestion 입력으�
 #### Tests
 
 - `npm.cmd run build`: passed
+
+### 2026-08-05 — 카드 피드 스크롤 보완
+
+#### Summary
+
+고정 높이 내부 스크롤을 제거하고 일반 페이지 스크롤의 proximity 스냅으로 변경해 카드 잘림과 상단 스크롤 끊김을 줄였다. 중복된 개인정보 안내 박스는 제거하고 헤더 안내만 유지했다.
+
+#### Tests
+
+- `npm.cmd run build`: passed

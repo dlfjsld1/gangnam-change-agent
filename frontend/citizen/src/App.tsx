@@ -110,7 +110,6 @@ export function App() {
       </header>
 
       <div className="feed-panel">
-        <p className="privacy-note">⌾ 서버로 전송하지 않아요</p>
         {policySource === "fixture" && ready && <p className="fixture-note">데모 정책을 보여드리고 있어요.</p>}
         {!ready && <p className="loading-copy">내 정보를 불러오는 중입니다.</p>}
 

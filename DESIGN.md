@@ -44,7 +44,7 @@
 - Typography: 한국어 가독성을 우선한 굵은 제목과 편안한 본문 크기
 - Spacing/layout rhythm: 모바일 20~24px 여백, 카드 간 16px, 큰 헤더와 둥근 상단 모서리
 - Shape/radius/elevation: 20~28px 둥근 카드, 얕은 테두리와 부드러운 그림자
-- Motion: 정책 카드는 세로 스냅으로 한 장씩 넘기며, reduced motion 환경에서는 강제 스냅을 해제한다.
+- Motion: 정책 카드는 일반 스크롤을 방해하지 않는 proximity 세로 스냅을 사용하며, reduced motion 환경에서는 스냅을 해제한다.
 - Imagery/iconography: 단순한 선형 기호와 텍스트 라벨을 함께 사용한다.
 
 ## Components

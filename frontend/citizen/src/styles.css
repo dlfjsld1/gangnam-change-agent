@@ -15,6 +15,10 @@ body {
   background: #edf2fb;
 }
 
+html {
+  scroll-snap-type: y proximity;
+}
+
 button,
 input {
   font: inherit;
@@ -40,8 +44,8 @@ input:focus-visible {
 }
 
 .hero {
-  min-height: 300px;
-  padding: 32px 24px 86px;
+  min-height: 274px;
+  padding: 32px 24px 58px;
   color: #fff;
   background:
     radial-gradient(circle at 88% 12%, rgba(73, 137, 255, 0.32), transparent 30%),
@@ -93,34 +97,12 @@ input:focus-visible {
 
 .feed-panel {
   position: relative;
-  margin-top: -58px;
-  height: calc(100dvh - 242px);
-  min-height: 480px;
+  margin-top: -26px;
   padding: 0 16px 24px;
-  overflow-y: auto;
-  scroll-snap-type: y mandatory;
-  scrollbar-width: none;
-}
-
-.feed-panel::-webkit-scrollbar {
-  display: none;
-}
-
-.privacy-note {
-  display: flex;
-  align-items: center;
-  min-height: 58px;
-  margin: 0 0 16px;
-  padding: 14px 18px;
-  color: #1765d7;
-  font-weight: 800;
-  letter-spacing: -0.04em;
-  background: #e9f2ff;
-  border-radius: 18px;
 }
 
 .fixture-note {
-  margin: -8px 4px 14px;
+  margin: 0 4px 12px;
   color: #738099;
   font-size: 0.78rem;
   text-align: right;
@@ -133,14 +115,14 @@ input:focus-visible {
 }
 
 .policy-card {
-  min-height: calc(100dvh - 310px);
+  margin-bottom: 16px;
   padding: 24px;
   background: #fff;
   border: 1px solid #e3e9f3;
   border-radius: 24px;
   box-shadow: 0 12px 28px rgba(18, 43, 91, 0.1);
   scroll-snap-align: start;
-  scroll-snap-stop: always;
+  scroll-margin-top: 16px;
 }
 
 .card-topline {
@@ -489,7 +471,7 @@ input:focus-visible {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .feed-panel {
+  html {
     scroll-snap-type: none;
   }
 }
