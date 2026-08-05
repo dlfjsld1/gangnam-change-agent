@@ -29,6 +29,7 @@
 - [x] 대상이 아닌 `NO` 정책 카드를 홈과 즐겨찾기에서 숨긴다.
 - [x] 정책 상세에서 evidence의 원문 공고 URL로 이동하는 버튼을 제공한다.
 - [x] 공고 카드의 정보 간격과 강조 단계를 정리하고 YES 상태 문구의 체크 기호를 제거한다.
+- [x] 승인 정책 evidence의 S3 또는 공식 원문 URL을 새 탭에서 안전하게 연다.
 
 ## Completion criteria
 
@@ -51,6 +52,16 @@
 - docs/contracts/field-definition.schema.json
 
 ## Change history
+
+### 2026-08-05 공개 첨부 S3 링크 계약 반영
+
+#### Summary
+
+최신 `main`의 공개 첨부 계약을 반영했다. 시민 PWA는 S3에 직접 업로드하거나 별도 API를 호출하지 않고, 승인 정책 evidence의 `source_url`을 그대로 사용한다. 이 URL은 승인 뒤 S3 또는 CloudFront 고정 URL일 수 있으며 새 탭에서 안전하게 연다.
+
+#### Tests
+
+- Pending: `npm.cmd run build`
 
 ### 2026-08-05 공고 카드 가독성 정리
 

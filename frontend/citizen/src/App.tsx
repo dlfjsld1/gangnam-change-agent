@@ -467,7 +467,7 @@ function PolicyDetail(props: { onClose: () => void; policy: PolicyPackage }) {
           ))}
         </section>
         {props.policy.evidence[0]?.source_url && (
-          <a className="source-link-button" href={props.policy.evidence[0].source_url} rel="noreferrer" target="_blank">
+          <a className="source-link-button" href={props.policy.evidence[0].source_url} rel="noopener noreferrer" target="_blank">
             <span className="source-link-icon" aria-hidden="true">↗</span>
             <span><strong>원문 공고 보기</strong><small>강남구 원문과 첨부파일을 확인할 수 있어요</small></span>
             <span aria-hidden="true" className="source-link-arrow">›</span>
