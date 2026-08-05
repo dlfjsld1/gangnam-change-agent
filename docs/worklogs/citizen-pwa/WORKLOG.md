@@ -3,9 +3,9 @@
 ## Current status
 
 - Current milestone: 카드형 시민 PWA 홈 프로토타입
-- Working: manifest, service worker, 동적 프로필 타입, IndexedDB 저장, 재귀 판정 matcher, 질문 답변과 UNKNOWN/STALE 재판정, 카드 피드와 로컬 숨기기
-- In progress: 홈 화면 피드백 반영과 승인 정책 API adapter 연결
-- Not implemented: 사용자 A/B 전환 UI, 카드 상세 화면, API adapter
+- Working: manifest, service worker, 동적 프로필 타입, IndexedDB 저장, 재귀 판정 matcher, 질문 답변과 UNKNOWN/STALE 재판정, 카드 피드와 로컬 숨기기, 승인 정책 API fallback
+- In progress: 사용자 A/B 프로필 전환과 결과·해야 할 일 화면
+- Not implemented: 사용자 A/B 전환 UI, 카드 상세 화면
 - Blockers: 없음
 
 ## Next actions
@@ -16,7 +16,7 @@
 - [x] 답변을 IndexedDB에 저장하고 저장 직후 정책을 다시 판정한다.
 - [x] `stale-refresh-smoke.json`을 연결해 STALE 갱신 질문을 UNKNOWN 신규 질문보다 먼저 표시한다.
 - [x] 카드형 홈 피드와 기기 내 카드 숨기기·복원 동작을 구현한다.
-- [ ] 승인된 정책 패키지만 읽는 API adapter와 fixture fallback을 연결한다.
+- [x] 승인된 정책 패키지만 읽는 API adapter와 fixture fallback을 연결한다.
 - [ ] 사용자 A/B 프로필 전환과 결과·해야 할 일 화면을 완성한다.
 
 ## Completion criteria
@@ -112,4 +112,15 @@ fixture 정책의 승인된 required profile field를 DynamicQuestion 입력으�
 
 - 브라우저 확인: 카드 숨기기와 다시 보기 동작 확인
 - `npm.cmd test`: 7 passed
+- `npm.cmd run build`: passed
+
+### 2026-08-05 — 승인 정책 API fallback 연결
+
+#### Summary
+
+승인 정책 API를 먼저 호출하고, 요청 실패·비정상 응답 시 demo fixture를 사용하도록 adapter를 연결했다. API 응답에서는 승인 상태 정책만 시민 화면에 전달한다.
+
+#### Tests
+
+- `npm.cmd test`: 8 passed
 - `npm.cmd run build`: passed

@@ -3,6 +3,7 @@ import test from "node:test";
 
 import { evaluateRule, selectNextQuestion } from "./evaluateRule.ts";
 import { recordAnswer } from "../profile/answerProfile.ts";
+import { loadApprovedPolicyPackages } from "../policy/policyApi.ts";
 import policyPackage from "../../../../demo-data/approved-policy.json" with { type: "json" };
 import staleRefreshSmoke from "../../../../demo-data/stale-refresh-smoke.json" with { type: "json" };
 import unknownQuestionSmoke from "../../../../demo-data/unknown-question-smoke.json" with { type: "json" };
@@ -240,4 +241,22 @@ test("selects a STALE field before a missing field and changes it to YES after r
     ),
     staleRefreshSmoke.expected_after,
   );
+});
+
+
+test("uses only approved API policies and falls back to the fixture on failure", async () => {
+  const approvedResult = await loadApprovedPolicyPackages(
+    async () => ({
+      ok: true,
+      json: async () => [policyPackage, { ...policyPackage, policy_id: "pending", review: { status: "pending" } }],
+    }),
+    [policyPackage],
+  );
+  assert.deepEqual(approvedResult, { policies: [policyPackage], source: "api" });
+
+  const fallbackResult = await loadApprovedPolicyPackages(
+    async () => { throw new Error("offline"); },
+    [policyPackage],
+  );
+  assert.deepEqual(fallbackResult, { policies: [policyPackage], source: "fixture" });
 });

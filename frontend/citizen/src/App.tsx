@@ -4,60 +4,68 @@ import { DynamicQuestion } from "./components/DynamicQuestion";
 import { hidePolicy, loadHiddenPolicyIds, restoreHiddenPolicies } from "./feed/hiddenPolicyStore";
 import { evaluateRule, selectNextQuestion } from "./matcher/evaluateRule";
 import type { MatchStatus } from "./matcher/evaluateRule";
+import { loadApprovedPolicyPackages } from "./policy/policyApi";
 import type { PolicyPackage } from "./policy/policyPackage";
 import { recordAnswer } from "./profile/answerProfile";
-import type { LocalProfile } from "./profile/dynamicProfile";
+import type { FieldDefinition, LocalProfile } from "./profile/dynamicProfile";
 import { loadProfile, saveProfile } from "./profile/profileStore";
 import policyFixture from "../../../demo-data/approved-policy.json";
 
 
-const policyPackage = policyFixture as PolicyPackage;
+const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+const fixturePolicies = [policyFixture as PolicyPackage];
 
 function today(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
 
+async function fetchPolicyPackages(): Promise<Response> {
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), 3_000);
+  try {
+    return await fetch(`${apiBaseUrl}/api/policy-packages`, { signal: controller.signal });
+  } finally {
+    window.clearTimeout(timeout);
+  }
+}
+
+
 export function App() {
   const [profile, setProfile] = useState<LocalProfile>({});
-  const [profileReady, setProfileReady] = useState(false);
+  const [policies, setPolicies] = useState<PolicyPackage[]>(fixturePolicies);
+  const [policySource, setPolicySource] = useState<"api" | "fixture">("fixture");
+  const [ready, setReady] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [hiddenPolicyIds, setHiddenPolicyIds] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState("home");
 
   useEffect(() => {
-    void Promise.all([loadProfile(), loadHiddenPolicyIds()])
-      .then(([savedProfile, savedHiddenPolicyIds]) => {
+    void Promise.all([
+      loadProfile(),
+      loadHiddenPolicyIds(),
+      loadApprovedPolicyPackages(
+        fetchPolicyPackages,
+        fixturePolicies,
+      ),
+    ])
+      .then(([savedProfile, savedHiddenPolicyIds, policyResult]) => {
         setProfile(savedProfile);
         setHiddenPolicyIds(savedHiddenPolicyIds);
+        setPolicies(policyResult.policies);
+        setPolicySource(policyResult.source);
       })
-      .finally(() => setProfileReady(true));
+      .finally(() => setReady(true));
   }, []);
 
-  const currentDate = today();
-  const status = useMemo<MatchStatus>(
-    () => evaluateRule(policyPackage.eligibility_rule, profile, currentDate),
-    [currentDate, profile],
+  const visiblePolicies = useMemo(
+    () => policies.filter((policy) => !hiddenPolicyIds.includes(policy.policy_id)),
+    [hiddenPolicyIds, policies],
   );
-  const question = useMemo(
-    () => selectNextQuestion(
-      policyPackage.eligibility_rule,
-      policyPackage.required_profile_fields,
-      profile,
-      currentDate,
-    ),
-    [currentDate, profile],
-  );
-  const isHidden = hiddenPolicyIds.includes(policyPackage.policy_id);
-  const change = policyPackage.changes[0];
 
-  async function saveAnswer(value: unknown) {
-    if (!question) {
-      return;
-    }
-
+  async function saveAnswer(field: FieldDefinition, value: unknown) {
     setIsSaving(true);
-    const nextProfile = recordAnswer(profile, question.field, value, currentDate);
+    const nextProfile = recordAnswer(profile, field, value, today());
     try {
       await saveProfile(nextProfile);
       setProfile(nextProfile);
@@ -66,9 +74,9 @@ export function App() {
     }
   }
 
-  async function hideCurrentPolicy() {
-    await hidePolicy(policyPackage.policy_id);
-    setHiddenPolicyIds((current) => [...new Set([...current, policyPackage.policy_id])]);
+  async function hideCurrentPolicy(policyId: string) {
+    await hidePolicy(policyId);
+    setHiddenPolicyIds((current) => [...new Set([...current, policyId])]);
   }
 
   async function restorePolicies() {
@@ -83,49 +91,34 @@ export function App() {
           <p>강남 Change Agent</p>
           <button aria-label="알림" className="icon-button" type="button">♧</button>
         </div>
-        <h1>나에게 관련된 변화 {isHidden ? 0 : 1}개</h1>
+        <h1>나에게 관련된 변화 {visiblePolicies.length}개</h1>
         <p>내 정보는 이 기기 안에서만 비교돼요.</p>
       </header>
 
       <div className="feed-panel">
         <p className="privacy-note">⌾ 서버로 전송하지 않아요</p>
-        {!profileReady && <p className="loading-copy">내 정보를 불러오는 중입니다.</p>}
+        {policySource === "fixture" && ready && <p className="fixture-note">데모 정책을 보여드리고 있어요.</p>}
+        {!ready && <p className="loading-copy">내 정보를 불러오는 중입니다.</p>}
 
-        {profileReady && !isHidden && (
-          <article className="policy-card">
-            <div className="card-topline">
-              <span className={`status-chip status-${status.toLowerCase()}`}>
-                {status === "YES" ? "✓ 대상 가능성 높음" : status === "NO" ? "확인 결과 대상 아님" : "확인 필요"}
-              </span>
-              <button className="hide-button" onClick={hideCurrentPolicy} type="button">숨기기</button>
-            </div>
-            <p className="policy-category">✦ {policyPackage.category}</p>
-            <h2>{policyPackage.title}</h2>
-            {change && (
-              <p className="change-copy">
-                {change.label} <strong>{formatChange(change.before)}</strong> <span>→</span> <strong className="accent-value">{formatChange(change.after)}</strong>
-              </p>
-            )}
-            <p className="impact-copy">{policyPackage.summary}</p>
-            {question ? (
-              <DynamicQuestion
-                field={question.field}
-                reason={question.reason}
-                onAnswer={saveAnswer}
-                pending={isSaving}
-              />
-            ) : (
-              <p className="result-copy">{status === "YES" ? "조건을 모두 확인했어요." : "현재 확인할 정보가 없어요."}</p>
-            )}
-            <button className="detail-button" type="button">자세히 보기 <span>›</span></button>
-          </article>
-        )}
+        {ready && visiblePolicies.map((policy) => (
+          <PolicyCard
+            isSaving={isSaving}
+            key={policy.policy_id}
+            onAnswer={saveAnswer}
+            onHide={hideCurrentPolicy}
+            policy={policy}
+            profile={profile}
+          />
+        ))}
 
-        {profileReady && isHidden && (
+        {ready && policies.length > 0 && visiblePolicies.length === 0 && (
           <section className="empty-feed">
             <p>숨긴 변화가 있어요.</p>
             <button onClick={restorePolicies} type="button">숨긴 카드 다시 보기</button>
           </section>
+        )}
+        {ready && policies.length === 0 && (
+          <section className="empty-feed"><p>지금은 새로 확인할 변화가 없어요.</p></section>
         )}
       </div>
 
@@ -136,6 +129,66 @@ export function App() {
       </nav>
     </main>
   );
+}
+
+
+interface PolicyCardProps {
+  isSaving: boolean;
+  onAnswer: (field: FieldDefinition, value: unknown) => Promise<void>;
+  onHide: (policyId: string) => Promise<void>;
+  policy: PolicyPackage;
+  profile: LocalProfile;
+}
+
+function PolicyCard(props: PolicyCardProps) {
+  const currentDate = today();
+  const status = evaluateRule(props.policy.eligibility_rule, props.profile, currentDate);
+  const question = selectNextQuestion(
+    props.policy.eligibility_rule,
+    props.policy.required_profile_fields,
+    props.profile,
+    currentDate,
+  );
+  const change = props.policy.changes[0];
+
+  return (
+    <article className="policy-card">
+      <div className="card-topline">
+        <span className={`status-chip status-${status.toLowerCase()}`}>{statusLabel(status)}</span>
+        <button className="hide-button" onClick={() => props.onHide(props.policy.policy_id)} type="button">숨기기</button>
+      </div>
+      <p className="policy-category">✦ {props.policy.category}</p>
+      <h2>{props.policy.title}</h2>
+      {change && (
+        <p className="change-copy">
+          {change.label} <strong>{formatChange(change.before)}</strong> <span>→</span> <strong className="accent-value">{formatChange(change.after)}</strong>
+        </p>
+      )}
+      <p className="impact-copy">{props.policy.summary}</p>
+      {question ? (
+        <DynamicQuestion
+          field={question.field}
+          reason={question.reason}
+          onAnswer={(value) => props.onAnswer(question.field, value)}
+          pending={props.isSaving}
+        />
+      ) : (
+        <p className="result-copy">{status === "YES" ? "조건을 모두 확인했어요." : "현재 확인할 정보가 없어요."}</p>
+      )}
+      <button className="detail-button" type="button">자세히 보기 <span>›</span></button>
+    </article>
+  );
+}
+
+
+function statusLabel(status: MatchStatus): string {
+  if (status === "YES") {
+    return "✓ 대상 가능성 높음";
+  }
+  if (status === "NO") {
+    return "확인 결과 대상 아님";
+  }
+  return "확인 필요";
 }
 
 

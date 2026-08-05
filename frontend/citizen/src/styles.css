@@ -110,6 +110,13 @@ input:focus-visible {
   border-radius: 18px;
 }
 
+.fixture-note {
+  margin: -8px 4px 14px;
+  color: #738099;
+  font-size: 0.78rem;
+  text-align: right;
+}
+
 .loading-copy {
   margin: 28px 8px;
   color: #68738a;
