@@ -141,6 +141,21 @@ compile까지 검증됐다. PostgreSQL live 연결과 운영 migration 방식은
 7. Agent API 실행 결과가 DB에 저장되고 AgentRun을 다시 조회할 수 있는지 확인
 8. PostgreSQL 연결과 관리자 API가 준비되면 관련 smoke 재실행
 
+격리된 배포 DB에서 전체 API 흐름은 저장소 루트 기준으로 다음 스크립트를 사용한다.
+이 스크립트는 실제 AgentRun과 검토·승인 데이터를 생성하므로 운영 DB에는 실행하지
+않는다.
+
+```powershell
+$env:BACKEND_BASE_URL="https://배포된-백엔드"
+$env:SMOKE_NOTICE_URL="https://www.gangnam.go.kr/notice/view.do?id=61922"
+$env:SMOKE_ALLOW_MUTATIONS="true"
+python backend/scripts/smoke_agent_review_publish.py
+```
+
+이전 승인 정책과의 diff까지 확인할 때만 `SMOKE_PREVIOUS_POLICY_ID`를 추가한다. 성공
+결과에는 `run_id`, `policy_id`, 승인한 field review 목록과 최종 `approved` 상태가
+출력된다.
+
 관리자 승인·반려 endpoint는 데모 통합용 최소 API이며 애플리케이션 자체 인증을 아직
 포함하지 않는다. AWS에서 공용 인터넷에 노출하기 전 관리자 경로에 인증 또는 동등한
 접근 제한을 적용하고, 시민 PWA에는 승인 정책 GET endpoint만 제공한다.
