@@ -4,9 +4,9 @@
 
 - Current milestone: 공식 강남구 게시판 수집 adapter
 - Working: health API, 승인 정책 fixture API, 공통 계약, 공식 게시판 수집, HTML·PDF·HWPX 추출과 동일 문서 변형 교차 검증
-- In progress: 이미지 OCR 공급자 연결과 형식별 추출 결과의 정책 조건 비교
-- Not implemented: 이미지 OCR, DB, LangGraph 실행, Agent 실행 로그
-- Blockers: 없음
+- In progress: 이미지 OCR 공급자 결정과 형식별 추출 결과의 정책 조건 비교
+- Not implemented: 이미지 OCR, DB, LangGraph 실행
+- Blockers: 이미지 OCR 공급자 미확정
 
 ## Next actions
 
@@ -16,7 +16,8 @@
 - [ ] 이미지 OCR 공급자를 연결해 동일 basename의 이미지도 같은 비교 흐름에 포함한다.
 - [ ] 추출 결과를 EligibilityRule과 PolicyPackage 구조로 변환한다.
 - [ ] 기존 FieldDefinition 재사용 또는 FieldDefinitionProposal 생성을 연결한다.
-- [ ] AgentRun에 노드·도구 실행 로그와 review_required 사유를 기록한다.
+- [x] 문서 추출·근거 비교 로그와 review_required 사유를 AgentRun에 기록한다.
+- [ ] LangGraph 전체 노드·도구 실행 로그를 AgentRun에 누적한다.
 
 ## Completion criteria
 
@@ -40,6 +41,23 @@
 - docs/contracts/field-definition-proposal.schema.json
 
 ## Change history
+
+### 2026-08-05 — 문서 분석 AgentRun 연결
+
+#### Summary
+
+문서 추출과 형식별 근거 비교 결과를 기존 AgentRun 계약에 맞는 노드 로그, 실행 상태, 검토 여부와 사유로 변환했다.
+
+#### Contract impact
+
+기존 agent-run.schema.json을 그대로 사용했으며 공통 schema는 변경하지 않았다.
+
+#### Tests
+
+- ruff check: passed
+- ruff format --check: passed
+- pytest: 19 passed
+- AgentRun JSON Schema validation: completed·review_required 경로 passed
 
 ### 2026-08-05 — 문서 변형 추출과 교차 검증
 
