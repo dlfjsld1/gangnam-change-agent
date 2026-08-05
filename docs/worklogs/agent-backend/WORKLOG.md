@@ -3,7 +3,7 @@
 ## Current status
 
 - Current milestone: 공식 강남구 게시판 수집 adapter
-- Working: health API, 승인 정책 fixture API, 공통 계약, 공식 게시판 수집, HTML·PDF·HWPX 추출, OpenAI 이미지 OCR adapter, 동일 문서 변형 교차 검증
+- Working: health API, 승인 정책 fixture API, 공통 계약, 공식 게시판 수집, HTML·PDF·HWPX 추출, 최후 복구용 OpenAI 이미지 OCR adapter, 동일 문서 변형 교차 검증
 - In progress: 공개 스캔 공고 OCR smoke와 형식별 추출 결과의 정책 조건 비교
 - Not implemented: DB, LangGraph 실행
 - Blockers: 공개 스캔 공고 fixture 선정 필요
@@ -60,6 +60,22 @@ PDF의 각 페이지를 로컬 텍스트 또는 스캔 페이지로 분류하고
 - pytest: 25 passed
 - OpenAI 요청: fake client로 Responses API payload 검증
 - Live OpenAI call: 합성 PNG의 `강남구 OCR 확인 2026` 문구가 원문과 정확히 일치해 인증·이미지 입력·응답 경로 통과
+
+### 2026-08-05 — OpenAI OCR 실행 순서 제한
+
+#### Summary
+
+동일 문서 그룹의 로컬 PDF·HWPX 추출을 먼저 수행하고, 이미지와 스캔 PDF처럼 로컬 추출이 불가능한 부분에 OpenAI OCR을 실행하도록 순서를 변경했다. 필요한 OCR은 생략하지 않으며, 전체 추출과 비교 이후에도 미해결이면 관리자 검토로 전환한다.
+
+#### Contract impact
+
+공통 API schema 변경 없이 D-004와 D-005의 내부 실행 순서를 갱신했다.
+
+#### Tests
+
+- ruff check: passed
+- ruff format --check: passed
+- pytest: 27 passed
 
 ### 2026-08-05 — 문서 분석 AgentRun 연결
 

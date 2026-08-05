@@ -67,18 +67,29 @@ def extract_notice_corpus(
     image_ocr: TextExtractor | None = None,
     extractors: Mapping[str, TextExtractor] | None = None,
 ) -> NoticeDocumentCorpus:
-    active_extractors: dict[str, TextExtractor] = {
-        "pdf": lambda content: extract_pdf_text(content, image_ocr=image_ocr),
+    local_extractors: dict[str, TextExtractor] = {
+        "pdf": extract_pdf_text,
         "hwpx": extract_hwpx_text,
     }
-    if image_ocr is not None:
-        active_extractors["image"] = image_ocr
     if extractors is not None:
-        active_extractors.update(extractors)
+        local_extractors.update(extractors)
+
+    ocr_extractors: dict[str, TextExtractor] = {}
+    if image_ocr is not None:
+        ocr_extractors = {
+            "pdf": lambda content: extract_pdf_text(content, image_ocr=image_ocr),
+            "image": image_ocr,
+        }
 
     groups = _group_attachments(notice.attachments)
     comparisons = [
-        _extract_and_compare(group_key, attachments, downloader, active_extractors)
+        _extract_and_compare(
+            group_key,
+            attachments,
+            downloader,
+            local_extractors,
+            ocr_extractors,
+        )
         for group_key, attachments in groups.items()
     ]
     review_reasons = [
@@ -133,12 +144,51 @@ def _extract_and_compare(
     group_key: str,
     attachments: list[SourceAttachment],
     downloader: AttachmentDownloader,
-    extractors: Mapping[str, TextExtractor],
+    local_extractors: Mapping[str, TextExtractor],
+    ocr_extractors: Mapping[str, TextExtractor],
 ) -> AttachmentComparison:
-    results = [
-        _extract_attachment(attachment, downloader, extractors)
-        for attachment in attachments
-    ]
+    results: list[DocumentExtraction] = []
+    ocr_candidates: list[SourceAttachment] = []
+    deferred_failures: dict[str, DocumentExtraction] = {}
+    payload_cache: dict[str, bytes] = {}
+
+    for attachment in attachments:
+        if (
+            attachment.file_type == "image"
+            and attachment.file_type not in local_extractors
+        ):
+            ocr_candidates.append(attachment)
+            continue
+
+        result = _extract_attachment(
+            attachment,
+            downloader,
+            local_extractors,
+            payload_cache,
+        )
+        if _requires_ocr_retry(attachment, result):
+            ocr_candidates.append(attachment)
+            deferred_failures[attachment.filename] = result
+        else:
+            results.append(result)
+
+    for attachment in ocr_candidates:
+        if attachment.file_type in ocr_extractors:
+            results.append(
+                _extract_attachment(
+                    attachment,
+                    downloader,
+                    ocr_extractors,
+                    payload_cache,
+                )
+            )
+        else:
+            results.append(
+                deferred_failures.get(attachment.filename)
+                or _missing_extractor_result(attachment)
+            )
+
+    results.sort(key=lambda result: _result_order(result, attachments))
     succeeded = [result for result in results if result.status == "succeeded"]
     representative = min(
         succeeded,
@@ -165,10 +215,43 @@ def _extract_and_compare(
     )
 
 
+def _requires_ocr_retry(
+    attachment: SourceAttachment,
+    result: DocumentExtraction,
+) -> bool:
+    return (
+        attachment.file_type == "pdf"
+        and result.status == "failed"
+        and result.error is not None
+        and "requires image OCR" in result.error
+    )
+
+
+def _missing_extractor_result(attachment: SourceAttachment) -> DocumentExtraction:
+    return DocumentExtraction(
+        filename=attachment.filename,
+        source_type=attachment.file_type,
+        status="failed",
+        error=f"No extractor configured for {attachment.file_type}",
+    )
+
+
+def _result_order(
+    result: DocumentExtraction,
+    attachments: list[SourceAttachment],
+) -> int:
+    return next(
+        index
+        for index, attachment in enumerate(attachments)
+        if attachment.filename == result.filename
+    )
+
+
 def _extract_attachment(
     attachment: SourceAttachment,
     downloader: AttachmentDownloader,
     extractors: Mapping[str, TextExtractor],
+    payload_cache: dict[str, bytes],
 ) -> DocumentExtraction:
     extractor = extractors.get(attachment.file_type)
     if extractor is None:
@@ -180,7 +263,9 @@ def _extract_attachment(
         )
 
     try:
-        content = downloader.fetch_bytes(attachment.url)
+        if attachment.url not in payload_cache:
+            payload_cache[attachment.url] = downloader.fetch_bytes(attachment.url)
+        content = payload_cache[attachment.url]
         _validate_payload(attachment.file_type, content)
         text = _clean_text(extractor(content))
         if len(text) < MINIMUM_TEXT_LENGTH:

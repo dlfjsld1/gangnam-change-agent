@@ -50,7 +50,7 @@ def _attachment(filename: str, file_type: str) -> SourceAttachment:
     )
 
 
-def test_same_name_variants_are_all_extracted_and_pdf_is_representative() -> None:
+def test_local_variants_run_before_required_image_ocr() -> None:
     downloader = FakeDownloader()
     notice = _notice(
         [
@@ -61,15 +61,21 @@ def test_same_name_variants_are_all_extracted_and_pdf_is_representative() -> Non
     )
     shared_text = "지원 대상은 강남구 거주 청년이며 최대 이십만원을 지원합니다."
 
+    ocr_calls: list[bytes] = []
     corpus = extract_notice_corpus(
         notice,
         downloader,
-        image_ocr=lambda _: shared_text,
+        image_ocr=lambda content: ocr_calls.append(content) or shared_text,
         extractors={"pdf": lambda _: shared_text, "hwpx": lambda _: shared_text},
     )
 
     group = corpus.attachment_groups[0]
-    assert len(downloader.requested_urls) == 3
+    assert downloader.requested_urls == [
+        "https://www.gangnam.go.kr/files/공고문.pdf",
+        "https://www.gangnam.go.kr/files/공고문.hwpx",
+        "https://www.gangnam.go.kr/files/공고문.png",
+    ]
+    assert len(ocr_calls) == 1
     assert [result.status for result in group.extractions] == [
         "succeeded",
         "succeeded",
@@ -77,6 +83,46 @@ def test_same_name_variants_are_all_extracted_and_pdf_is_representative() -> Non
     ]
     assert group.representative_filename == "공고문.pdf"
     assert group.review_required is False
+
+
+def test_image_ocr_runs_when_no_local_evidence_exists() -> None:
+    notice = _notice([_attachment("안내.png", "image")])
+
+    corpus = extract_notice_corpus(
+        notice,
+        FakeDownloader(),
+        image_ocr=lambda _: "신청 대상은 강남구 거주 청년입니다.",
+    )
+
+    result = corpus.attachment_groups[0].extractions[0]
+    assert result.status == "succeeded"
+    assert result.text == "신청 대상은 강남구 거주 청년입니다."
+    assert corpus.review_required is False
+
+
+def test_image_ocr_runs_before_local_conflict_requests_review() -> None:
+    notice = _notice(
+        [
+            _attachment("모집.pdf", "pdf"),
+            _attachment("모집.hwpx", "hwpx"),
+            _attachment("모집.png", "image"),
+        ]
+    )
+    ocr_calls: list[bytes] = []
+
+    corpus = extract_notice_corpus(
+        notice,
+        FakeDownloader(),
+        image_ocr=lambda content: ocr_calls.append(content)
+        or "신청 기간은 8월 1일부터 8월 10일까지입니다.",
+        extractors={
+            "pdf": lambda _: "신청 기간은 8월 1일부터 8월 10일까지입니다.",
+            "hwpx": lambda _: "접수 기간은 9월 1일부터 9월 30일까지입니다.",
+        },
+    )
+
+    assert len(ocr_calls) == 1
+    assert corpus.attachment_groups[0].review_required is True
 
 
 def test_variant_conflict_requires_review_without_discarding_results() -> None:

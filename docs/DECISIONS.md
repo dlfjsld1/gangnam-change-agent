@@ -37,10 +37,10 @@
 
 - Date: 2026-08-05
 - Status: accepted
-- Decision: HTML 본문과 동일 basename으로 제공되는 PDF·HWPX·이미지를 가능한 범위에서 모두 파싱하며, 확장자 우선순위로 다른 형식을 생략하지 않는다.
+- Decision: HTML 본문과 동일 basename으로 제공되는 텍스트 PDF·HWPX를 먼저 파싱하고, 이미지와 스캔 PDF처럼 로컬 텍스트 추출이 불가능한 부분은 그다음 OpenAI OCR로 추출해 교차 검증한다. 필요한 문서 형식은 생략하지 않는다.
 - Representative evidence priority: HTML, PDF, HWPX, image
 - Comparison boundary: 동일 basename 첨부끼리는 원문 텍스트를 비교하고, 요약 HTML과 대표 첨부의 조건·기간·금액 비교는 구조화된 정책 조건 추출 단계에서 수행한다.
-- Review rule: 형식별 추출 실패 또는 내용 불일치는 `review_required` 사유로 남기고 결과를 임의로 폐기하지 않는다.
+- Review rule: 로컬 추출과 필요한 OpenAI OCR 이후에도 남은 추출 실패 또는 내용 불일치는 `review_required` 사유로 남기고 결과를 임의로 폐기하지 않는다.
 - Attachment transport: 첨부 URL은 강남구와 강남구 전자고시 호스트만 허용한다. 전자고시 호스트의 불완전한 인증서 체인에는 호스트 한정 예외를 적용하고 다운로드한 파일 signature를 검증한다.
 - Reason: 배포 형식에 따른 누락과 파싱 오류를 교차 검증하고 관리자에게 근거 충돌을 노출하기 위함이다.
 - Affected areas: backend, frontend/admin
@@ -50,11 +50,12 @@
 
 - Date: 2026-08-05
 - Status: accepted
-- Decision: PDF는 페이지별로 로컬 텍스트를 먼저 추출하고, 의미 있는 문자가 부족한 스캔 페이지만 이미지로 렌더링해 OpenAI Responses API OCR에 전달한다.
+- Decision: PDF는 페이지별 로컬 텍스트 추출을 먼저 시도한다. 의미 있는 문자가 부족해 로컬 추출이 불가능한 스캔 페이지는 그다음 이미지로 렌더링해 OpenAI Responses API OCR에 전달한다.
 - Mixed PDF: 텍스트 페이지와 OCR 페이지를 원래 페이지 순서로 병합하고 각 페이지의 처리 방법을 기록한다.
-- Image attachments: 이미지 첨부는 OpenAI Responses API OCR을 사용한다.
+- Image attachments: 로컬 텍스트 추출이 불가능하므로 앞선 로컬 문서 처리가 끝난 뒤 OpenAI Responses API OCR을 사용한다.
 - Privacy: OpenAI에는 공개 공고와 공개 첨부문서만 전송하며 시민 프로필은 전송하지 않는다.
 - Configuration: API key는 `OPENAI_API_KEY`, OCR 모델은 `OPENAI_OCR_MODEL` 환경변수로 주입한다.
-- Reason: 텍스트 PDF의 불필요한 API 비용과 지연을 피하면서 스캔·혼합 PDF를 처리하기 위함이다.
+- Escalation order: local extraction → required OpenAI OCR recovery → evidence comparison → administrator review.
+- Reason: OpenAI OCR을 관리자 검토 직전의 제한된 복구 단계로 두어 API 비용과 지연을 줄이면서 사람 검토 전에 한 번 더 자동 복구하기 위함이다.
 - Affected areas: backend
 - Contract impact: 공통 API schema 변경 없음
