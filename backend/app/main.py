@@ -16,6 +16,7 @@ from app.repositories.agent_repository import (
     ReviewNotFound,
 )
 from app.schemas.agent_api import AgentRunRequest, AgentRunResponse
+from app.schemas.discovery_api import NoticeDiscoveryRequest, NoticeDiscoveryResponse
 from app.schemas.review_api import ApproveFieldReviewRequest, RejectReviewRequest
 from app.services.agent_execution import AgentExecutionService, PreviousPolicyNotFound
 from app.services.attachment_archive import (
@@ -24,6 +25,10 @@ from app.services.attachment_archive import (
     configured_public_attachment_archive,
 )
 from app.services.policy_publish import PolicyPublishService
+from app.services.notice_discovery import (
+    NoticeDiscoveryService,
+    NoticeDiscoveryUnavailable,
+)
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -85,6 +90,16 @@ def get_policy_publish_service(
     repository: Annotated[AgentRepository, Depends(get_agent_repository)],
 ) -> PolicyPublishService:
     return PolicyPublishService(repository, public_attachment_archive)
+
+
+def get_notice_discovery_service(
+    repository: Annotated[AgentRepository, Depends(get_agent_repository)],
+    execution_service: Annotated[
+        AgentExecutionService,
+        Depends(get_agent_execution_service),
+    ],
+) -> NoticeDiscoveryService:
+    return NoticeDiscoveryService(repository, execution_service)
 
 
 @app.get("/health")
@@ -255,6 +270,17 @@ def create_agent_run(
             status_code=404,
             detail="Approved previous policy package not found.",
         ) from error
+
+
+@app.post("/api/notice-discovery-runs", response_model=NoticeDiscoveryResponse)
+def create_notice_discovery_run(
+    request: NoticeDiscoveryRequest,
+    service: Annotated[NoticeDiscoveryService, Depends(get_notice_discovery_service)],
+) -> NoticeDiscoveryResponse:
+    try:
+        return service.run(max_new_notices=request.max_new_notices)
+    except NoticeDiscoveryUnavailable as error:
+        raise HTTPException(status_code=503, detail=str(error)) from error
     except OpenAIError as error:
         raise HTTPException(
             status_code=503,

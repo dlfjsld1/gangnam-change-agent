@@ -52,6 +52,15 @@ class AgentRepository:
             record = session.get(AgentRunRecord, run_id)
             return record.payload if record is not None else None
 
+    def has_source_url(self, source_url: str) -> bool:
+        statement = (
+            select(SourceNoticeRecord.notice_key)
+            .where(SourceNoticeRecord.source_url == source_url)
+            .limit(1)
+        )
+        with self._session_factory() as session:
+            return session.scalar(statement) is not None
+
     def list_agent_runs(
         self,
         *,
