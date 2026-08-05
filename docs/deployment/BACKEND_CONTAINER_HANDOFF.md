@@ -130,6 +130,12 @@ compile까지 검증됐다. PostgreSQL live 연결과 운영 migration 방식은
 
 ## Container verification
 
+### Admin Codex next action
+
+Dockerfile과 PostgreSQL 실행 환경을 준비한 뒤 아래 검증 목록을 수행하고, 마지막에
+`backend/scripts/smoke_agent_review_publish.py`를 격리된 DB에 실행한다. 결과와 실패
+지점을 Admin Work log에 기록한 후 원래 관리자 UI·통합 작업으로 복귀한다.
+
 관리자·통합 담당은 최소한 다음을 실제로 확인하고 자신의 Work log에 기록한다.
 
 1. 저장소 루트 context에서 image build 성공
