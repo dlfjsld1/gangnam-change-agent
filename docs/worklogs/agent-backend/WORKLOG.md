@@ -44,6 +44,30 @@
 
 ## Change history
 
+### 2026-08-05 — TASK-001 Field Registry Node
+
+#### Summary
+
+정확한 key를 우선 적용하고, 공백·문장부호를 정규화한 label과 data type이 하나만 일치할 때 canonical FieldDefinition을 재사용하도록 FieldRegistry 해석 결과를 추가했다. 일치 후보가 없거나 여러 개면 pending FieldDefinitionProposal을 하나만 만들고, pending/rejected field는 새 제안 없이 unresolved field로 남긴다. 정책 조립은 해석된 canonical key를 eligibility rule에 사용한다.
+
+#### Contract impact
+
+공유 계약, LangGraph topology, `backend/app/agent/graph.py`, `backend/app/agent/state.py`는 수정하지 않았다. FieldDefinitionProposal과 PolicyPackage JSON Schema는 기존 검증을 통과했다.
+
+#### Validation
+
+- 대상 파일 `ruff check`: passed
+- 대상 파일 `ruff format --check`: passed
+- `pytest -q`: 41 passed, 5 warnings
+- `pytest -q tests/test_field_registry.py tests/test_policy_builder.py`: 14 passed
+- JSON Schema validation: FieldDefinitionProposal과 PolicyPackage validation passed
+- 전체 `ruff check .`: 기존 범위 밖 파일의 21개 이슈로 failed
+- 전체 `ruff format --check .`: 기존 `tests/test_document_extractor.py` 1개 파일로 failed
+
+#### Dependency
+
+- 작업 완료 후 Graph node 연결과 State partial update 연결은 Agent Backend 담당자가 진행한다.
+
 ### 2026-08-05 — FieldDefinition 재사용과 신규 제안 연결
 
 #### Summary
