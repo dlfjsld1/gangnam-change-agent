@@ -16,6 +16,11 @@ export type PolicyPackage = {
     after: unknown;
     impact_hint?: string;
   }>;
+  required_actions: Array<{
+    action_id: string;
+    label: string;
+    priority: number;
+  }>;
   review: {
     status: "pending" | "approved" | "rejected";
   };

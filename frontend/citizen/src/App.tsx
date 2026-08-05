@@ -10,10 +10,16 @@ import { recordAnswer } from "./profile/answerProfile";
 import type { FieldDefinition, LocalProfile } from "./profile/dynamicProfile";
 import { loadProfile, saveProfile } from "./profile/profileStore";
 import policyFixture from "../../../demo-data/approved-policy.json";
+import userA from "../../../demo-data/user-a.json";
+import userB from "../../../demo-data/user-b.json";
 
 
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 const fixturePolicies = [policyFixture as PolicyPackage];
+const demoProfiles = {
+  A: toLocalProfile(userA.profile),
+  B: toLocalProfile(userB.profile),
+};
 
 function today(): string {
   return new Date().toISOString().slice(0, 10);
@@ -39,6 +45,8 @@ export function App() {
   const [isSaving, setIsSaving] = useState(false);
   const [hiddenPolicyIds, setHiddenPolicyIds] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState("home");
+  const [demoProfileName, setDemoProfileName] = useState<"A" | "B" | undefined>();
+  const [demoProfile, setDemoProfile] = useState<LocalProfile>();
 
   useEffect(() => {
     void Promise.all([
@@ -62,11 +70,16 @@ export function App() {
     () => policies.filter((policy) => !hiddenPolicyIds.includes(policy.policy_id)),
     [hiddenPolicyIds, policies],
   );
+  const activeProfile = demoProfile ?? profile;
 
   async function saveAnswer(field: FieldDefinition, value: unknown) {
     setIsSaving(true);
-    const nextProfile = recordAnswer(profile, field, value, today());
+    const nextProfile = recordAnswer(activeProfile, field, value, today());
     try {
+      if (demoProfileName) {
+        setDemoProfile(nextProfile);
+        return;
+      }
       await saveProfile(nextProfile);
       setProfile(nextProfile);
     } finally {
@@ -107,7 +120,7 @@ export function App() {
             onAnswer={saveAnswer}
             onHide={hideCurrentPolicy}
             policy={policy}
-            profile={profile}
+            profile={activeProfile}
           />
         ))}
 
@@ -119,6 +132,15 @@ export function App() {
         )}
         {ready && policies.length === 0 && (
           <section className="empty-feed"><p>지금은 새로 확인할 변화가 없어요.</p></section>
+        )}
+
+        {ready && (
+          <section className="demo-switcher" aria-label="데모 프로필 전환">
+            <p>발표용 데모 프로필</p>
+            <button aria-pressed={demoProfileName === "A"} onClick={() => { setDemoProfileName("A"); setDemoProfile(demoProfiles.A); }} type="button">사용자 A</button>
+            <button aria-pressed={demoProfileName === "B"} onClick={() => { setDemoProfileName("B"); setDemoProfile(demoProfiles.B); }} type="button">사용자 B</button>
+            <button aria-pressed={!demoProfileName} onClick={() => { setDemoProfileName(undefined); setDemoProfile(undefined); }} type="button">내 프로필</button>
+          </section>
         )}
       </div>
 
@@ -173,11 +195,24 @@ function PolicyCard(props: PolicyCardProps) {
           pending={props.isSaving}
         />
       ) : (
-        <p className="result-copy">{status === "YES" ? "조건을 모두 확인했어요." : "현재 확인할 정보가 없어요."}</p>
+        <PolicyResult actions={props.policy.required_actions} status={status} />
       )}
       <button className="detail-button" type="button">자세히 보기 <span>›</span></button>
     </article>
   );
+}
+
+
+function PolicyResult(props: { actions: PolicyPackage["required_actions"]; status: MatchStatus }) {
+  if (props.status === "YES") {
+    return (
+      <section className="action-list">
+        <h3>해야 할 일</h3>
+        {props.actions.map((action) => <p key={action.action_id}>{action.priority}. {action.label}</p>)}
+      </section>
+    );
+  }
+  return <p className="result-copy">{props.status === "NO" ? "현재 조건으로는 관련 대상이 아니에요." : "현재 확인할 정보가 없어요."}</p>;
 }
 
 
@@ -197,4 +232,15 @@ function formatChange(value: unknown): string {
     return `${String(value.max)}세`;
   }
   return String(value ?? "");
+}
+
+
+function toLocalProfile(profile: Record<string, { value: unknown; updated_at: string; valid_until?: string; sensitivity: string }>): LocalProfile {
+  return Object.fromEntries(Object.entries(profile).map(([key, value]) => [key, {
+    value: value.value,
+    updatedAt: value.updated_at,
+    validUntil: value.valid_until,
+    source: "user_input",
+    sensitivity: value.sensitivity as LocalProfile[string]["sensitivity"],
+  }]));
 }

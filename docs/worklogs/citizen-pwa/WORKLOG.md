@@ -4,8 +4,8 @@
 
 - Current milestone: 카드형 시민 PWA 홈 프로토타입
 - Working: manifest, service worker, 동적 프로필 타입, IndexedDB 저장, 재귀 판정 matcher, 질문 답변과 UNKNOWN/STALE 재판정, 카드 피드와 로컬 숨기기, 승인 정책 API fallback
-- In progress: 사용자 A/B 프로필 전환과 결과·해야 할 일 화면
-- Not implemented: 사용자 A/B 전환 UI, 카드 상세 화면
+- In progress: 카드 상세 화면과 홈 화면 피드백 반영
+- Not implemented: 카드 상세 화면
 - Blockers: 없음
 
 ## Next actions
@@ -17,7 +17,7 @@
 - [x] `stale-refresh-smoke.json`을 연결해 STALE 갱신 질문을 UNKNOWN 신규 질문보다 먼저 표시한다.
 - [x] 카드형 홈 피드와 기기 내 카드 숨기기·복원 동작을 구현한다.
 - [x] 승인된 정책 패키지만 읽는 API adapter와 fixture fallback을 연결한다.
-- [ ] 사용자 A/B 프로필 전환과 결과·해야 할 일 화면을 완성한다.
+- [x] 사용자 A/B 프로필 전환과 결과·해야 할 일 화면을 완성한다.
 
 ## Completion criteria
 
@@ -119,6 +119,17 @@ fixture 정책의 승인된 required profile field를 DynamicQuestion 입력으�
 #### Summary
 
 승인 정책 API를 먼저 호출하고, 요청 실패·비정상 응답 시 demo fixture를 사용하도록 adapter를 연결했다. API 응답에서는 승인 상태 정책만 시민 화면에 전달한다.
+
+#### Tests
+
+- `npm.cmd test`: 8 passed
+- `npm.cmd run build`: passed
+
+### 2026-08-05 — 사용자 A/B 데모와 결과 화면
+
+#### Summary
+
+발표용 사용자 A/B 프로필을 기기 내 임시 상태로 전환하고, 대상 가능성이 높은 정책에는 우선순위별 해야 할 일을 표시하도록 연결했다.
 
 #### Tests
 

@@ -312,6 +312,52 @@ input:focus-visible {
   border-radius: 12px;
 }
 
+.demo-switcher,
+.action-list {
+  margin-top: 16px;
+  padding: 16px 18px;
+  background: #fff;
+  border: 1px solid #e3e9f3;
+  border-radius: 18px;
+}
+
+.demo-switcher p,
+.action-list h3 {
+  margin: 0 0 10px;
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.demo-switcher button {
+  min-height: 38px;
+  margin: 3px 5px 0 0;
+  padding: 0 10px;
+  color: #53617a;
+  font-size: 0.78rem;
+  font-weight: 700;
+  background: #f4f7fd;
+  border: 1px solid #dbe4f3;
+  border-radius: 10px;
+}
+
+.demo-switcher button[aria-pressed="true"] {
+  color: #fff;
+  background: #2168e8;
+  border-color: #2168e8;
+}
+
+.action-list {
+  margin-bottom: 0;
+  color: #24591f;
+  background: #f1faef;
+  border-color: #d9efd5;
+}
+
+.action-list p {
+  margin: 8px 0 0;
+  font-size: 0.9rem;
+}
+
 .bottom-nav {
   position: fixed;
   z-index: 2;
