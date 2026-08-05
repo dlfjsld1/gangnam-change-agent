@@ -51,6 +51,37 @@
 실행 중 수집·추출·검증이 실패해도 AgentRun이 생성됐다면 HTTP 201 응답의
 `agent_run.status`를 `failed` 또는 `review_required`로 반환하고 DB에 기록한다.
 
+## POST /api/notice-discovery-runs
+
+관리자가 `새 공고 확인`을 요청할 때 강남구 공식 게시판 목록을 즉시 확인한다. 주기
+스케줄러 계약은 아니다.
+
+요청:
+
+```json
+{
+  "max_new_notices": 1
+}
+```
+
+- 기본값은 1, 최대값은 5다.
+- 이미 DB에 저장된 원본 공고 URL은 Agent를 다시 실행하지 않는다.
+- 새 공고는 최신 목록 순서로 제한 개수만 Agent 실행한다.
+- 시민 프로필이나 시민별 판정 결과를 요청·저장하지 않는다.
+
+응답:
+
+```json
+{
+  "discovered_count": 12,
+  "already_processed_count": 3,
+  "processed_runs": []
+}
+```
+
+게시판 목록 확인 자체가 실패하면 503을 반환한다. Agent 처리 결과가 failed 또는
+review_required여도 생성된 AgentRun은 `processed_runs`에 포함한다.
+
 ## 관리자 최소 계약
 
 - GET /api/agent-runs
