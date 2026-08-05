@@ -5,6 +5,10 @@ __pycache__/
 .ruff_cache/
 .venv/
 backend/.venv/
+*.egg-info/
+*.db
+*.db-shm
+*.db-wal
 
 # Node.js
 node_modules/
