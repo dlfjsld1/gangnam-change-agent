@@ -10,6 +10,8 @@
 - Working: Vite 앱, FieldDefinitionReview 목록·상세, evidence·canonical field 후보, 승인·수정·반려, AgentRun 로그, API 실패 fallback
 - In progress: 실제 Backend 관리자 API 연결
 - S3 공개 첨부 archive용 Terraform과 Admin 원본·공개 URL 표시 구현 완료, AWS apply 미실행
+- Working: Vite 앱, FieldDefinitionReview 목록·상세, evidence·canonical field 후보, 승인·수정·반려, AgentRun 로그, 수동 새 공고 확인 버튼, API 실패 fallback
+- In progress: 실제 Backend 관리자 API 연결과 배포 환경 확인
 - Not implemented: 승인된 정책의 시민 앱 통합 확인, 배포
 - Blockers: 계약에 맞춘 관리자 API 구현 필요
 
@@ -20,6 +22,8 @@
 - [x] 승인·수정·반려 동작을 로컬 fixture 상태로 먼저 연결한다.
 - [x] AgentRun의 review_required, review_reason, unresolved_fields와 실행 로그를 표시한다.
 - [x] 관리자 API 준비 후 fixture adapter를 실제 API adapter로 연결한다.
+- [ ] 관리자 API 준비 후 fixture adapter를 실제 API adapter로 교체한다.
+- [x] 새 공고 확인 버튼을 수동 크롤링 API에 연결하고 처리 결과를 새로고침한다.
 - [ ] 승인된 PolicyPackage 공개 흐름과 시민 PWA 연결을 검증한다.
 - [ ] 로컬 통합 확인 후 AWS에 관리자 웹·시민 PWA·백엔드를 배포한다.
 
@@ -55,6 +59,19 @@
 
 - `npm.cmd run build`: passed
 - 로컬 관리자 페이지 및 API: HTTP 200
+### 2026-08-05 — 수동 새 공고 확인 버튼
+
+#### Summary
+
+관리자가 버튼을 누르면 `POST /api/notice-discovery-runs`로 강남구 공식 게시판 크롤링을 요청하고, 새 공고의 Agent 실행 결과와 검토 목록을 다시 표시하도록 연결했다. 실행 중 중복 요청을 막고 신규 공고 없음과 실패 상태를 안내한다.
+
+#### Dependency
+
+- Backend의 `Feat: 새 공고 수동 확인 API 추가` 변경이 main과 배포 환경에 반영되어야 한다.
+
+#### Verification
+
+- `frontend/admin`: `npm.cmd run build` passed
 
 ### 2026-08-04 — fixture 기반 관리자 검토 화면 구현
 

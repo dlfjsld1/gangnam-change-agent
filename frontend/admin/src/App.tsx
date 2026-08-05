@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-import { ApiError, loadAdminData, loadRunDetail, submitPolicyReview, submitReview } from "./api";
+import { ApiError, discoverNewNotices, loadAdminData, loadRunDetail, submitPolicyReview, submitReview } from "./api";
 import type { AgentRun, FieldDefinition, FieldDefinitionReview, PolicyPackage, ReviewStatus, SourceNotice } from "./types";
 
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
@@ -24,6 +24,7 @@ export function App() {
   const [sourceNotice, setSourceNotice] = useState<SourceNotice | null>(null);
   const [source, setSource] = useState<"api" | "fixture">("fixture");
   const [draft, setDraft] = useState<FieldDefinition | null>(null);
+  const [isDiscovering, setIsDiscovering] = useState(false);
   const [message, setMessage] = useState("검토 데이터를 불러오는 중입니다.");
 
   useEffect(() => {
@@ -105,6 +106,32 @@ export function App() {
       setMessage(`${prefix}: ${error instanceof Error ? error.message : "알 수 없는 오류"}`);
     }
   }
+
+  async function checkNewNotices() {
+    setIsDiscovering(true);
+    setMessage("강남구 공식 게시판에서 새 공고를 확인하고 있습니다.");
+    try {
+      const discovery = await discoverNewNotices();
+      const data = await loadAdminData();
+      setReviews(data.reviews);
+      setRun(discovery.processed_runs[0] ?? data.run);
+      setRuns(data.runs);
+      setPolicies(data.policies);
+      setSourceNotice(data.sourceNotice);
+      setSource(data.source);
+      setSelectedId(data.reviews[0]?.review_id ?? "");
+      setMessage(
+        discovery.processed_runs.length > 0
+          ? `새 공고 ${discovery.processed_runs.length}건을 Agent가 처리했습니다.`
+          : "새로 처리할 공고가 없습니다.",
+      );
+    } catch (error) {
+      setMessage(`새 공고 확인 실패: ${error instanceof Error ? error.message : "알 수 없는 오류"}`);
+    } finally {
+      setIsDiscovering(false);
+    }
+  }
+
   return (
     <main className="admin-page">
       <header className="hero">
@@ -116,7 +143,12 @@ export function App() {
           </p>
           <p className="environment">API: {apiBaseUrl}</p>
         </div>
-        <span className={`source ${source}`}>{source === "api" ? "LIVE API" : "DEMO FIXTURE"}</span>
+        <div className="hero-actions">
+          <button className="discover-button" disabled={isDiscovering} onClick={() => void checkNewNotices()}>
+            {isDiscovering ? "확인 중…" : "새 공고 확인"}
+          </button>
+          <span className={`source ${source}`}>{source === "api" ? "LIVE API" : "DEMO FIXTURE"}</span>
+        </div>
       </header>
 
       <p className="notice" role="status">{message}</p>

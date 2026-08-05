@@ -47,6 +47,18 @@ export function loadRunDetail(runId: string): Promise<AdminRunDetail> {
   return request(`/api/admin/agent-runs/${encodeURIComponent(runId)}`);
 }
 
+export async function discoverNewNotices(): Promise<{
+  discovered_count: number;
+  already_processed_count: number;
+  processed_runs: AgentRun[];
+}> {
+  return request("/api/notice-discovery-runs", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ max_new_notices: 1 }),
+  });
+}
+
 export async function submitReview(
   reviewId: string,
   action: ReviewStatus | "edit",
