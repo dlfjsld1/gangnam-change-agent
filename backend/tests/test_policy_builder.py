@@ -21,7 +21,6 @@ from app.services.field_registry import FieldRegistry
 from app.services.policy_builder import build_policy_package
 from app.tools.openai_policy_extractor import OpenAIPolicyExtractor
 
-
 CONTRACTS_DIR = Path(__file__).parents[2] / "docs" / "contracts"
 
 
@@ -321,6 +320,33 @@ def test_approved_field_is_reused_without_proposal() -> None:
     assert result.policy_package["required_profile_fields"][0]["review_status"] == (
         "approved"
     )
+
+
+def test_label_and_data_type_match_uses_canonical_field_key() -> None:
+    draft = _draft().model_copy(
+        update={
+            "conditions": [
+                _draft()
+                .conditions[0]
+                .model_copy(update={"field": "residence_alias", "label": "거주-지역"})
+            ]
+        }
+    )
+    result = build_policy_package(
+        "run-canonical-field",
+        _notice(),
+        _corpus(),
+        draft,
+        _registry(),
+    )
+
+    assert result.field_proposals == []
+    assert result.agent_run.unresolved_fields == []
+    assert result.policy_package is not None
+    assert result.policy_package["eligibility_rule"] == {
+        "and": [{"field": "residence", "operator": "equals", "value": "강남구"}]
+    }
+    _validate_policy_package(result.policy_package)
 
 
 def test_pending_field_is_not_proposed_twice() -> None:
