@@ -15,6 +15,9 @@ class SourceAttachment(BaseModel):
     filename: str
     url: str
     file_type: Literal["hwpx", "pdf", "image", "hwp", "other"]
+    storage_key: str | None = None
+    public_url: str | None = None
+    sha256: str | None = None
 
 
 class SourceNotice(BaseModel):

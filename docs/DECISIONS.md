@@ -83,3 +83,15 @@
 - Reason: 로컬 개발 설정은 가볍게 유지하면서 배포 환경의 동시 접근과 영속성을 지원하기 위함이다.
 - Affected areas: backend, frontend/admin, infra
 - Contract impact: 공통 JSON Schema 변경 없음. 실제 Agent 실행 및 관리자 API는 같은 저장소 계층을 사용한다.
+
+## D-008 — 승인된 공개 근거 첨부의 S3 고정 URL 제공
+
+- Date: 2026-08-05
+- Status: accepted
+- Decision: 관리자 최종 승인 시 PolicyPackage evidence가 실제로 참조하는 강남구 공식 공개 첨부만 S3 `public-attachments/` 경로에 복사하고 고정 공개 URL로 evidence를 갱신한다.
+- Privacy boundary: 시민 프로필과 시민별 판정 결과는 S3에 저장하지 않는다. 검토 전 첨부와 정책 근거로 사용하지 않은 첨부도 공개 archive 대상이 아니다. 개인정보 가능성을 나타내는 파일명은 자동 공개를 차단한다.
+- Storage metadata: SourceNotice attachment에 원본 URL, S3 key, 공개 URL과 SHA-256을 함께 저장한다.
+- Delivery: 시민 PWA와 관리자 화면은 PolicyPackage evidence의 고정 URL을 사용한다. 버킷 업로드는 AWS IAM Role로 수행하며 access key를 코드나 환경 파일에 저장하지 않는다.
+- Reason: 공식 사이트 링크 변경 후에도 승인 당시 근거를 재현하고, PWA 사용자가 만료 없는 공개 첨부 링크를 열 수 있게 한다.
+- Affected areas: backend, frontend/citizen, frontend/admin, infra
+- Contract impact: 관리자 실행 상세 응답에 `source_notice`가 추가되며 기존 PolicyPackage evidence 구조는 유지한다.

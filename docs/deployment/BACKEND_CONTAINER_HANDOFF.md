@@ -18,7 +18,8 @@
 2. 이 문서
 3. `docs/DECISIONS.md`의 D-005, D-006, D-007
 4. `docs/contracts/api.md`
-5. `docs/worklogs/admin-integration/WORKLOG.md`
+5. `docs/contracts/PUBLIC_ATTACHMENT_FRONTEND_INTEGRATION.md`
+6. `docs/worklogs/admin-integration/WORKLOG.md`
 
 API 구현 상태를 판단해야 할 때만
 `docs/worklogs/agent-backend/WORKLOG.md`의 `Current status`와 `Next actions`를
@@ -104,9 +105,17 @@ library 설치가 성공하는지 실제 image build로 확인한다. 브라우�
 | `OPENAI_OCR_MODEL` | `.env.example` 기본값 | 필요 시 재정의 |
 | `OPENAI_POLICY_MODEL` | `.env.example` 기본값 | 필요 시 재정의 |
 | `BACKEND_CORS_ORIGINS` | localhost 시민·관리자 주소 | 배포된 시민 PWA·관리자 HTTPS origin |
+| `S3_ATTACHMENT_BUCKET` | 비워 두면 archive 비활성 | 공개 근거 첨부 버킷 이름 |
+| `S3_ATTACHMENT_REGION` | `ap-northeast-2` | 버킷 리전 |
+| `S3_ATTACHMENT_PREFIX` | `public-attachments` | 공개 첨부 key prefix |
+| `PUBLIC_ATTACHMENT_BASE_URL` | 선택 | S3 또는 CloudFront 공개 base URL |
 
 PostgreSQL 비밀번호, OpenAI key, AWS credential과 내부 접속 주소는 로그, Dockerfile,
 image layer, Git 문서에 실제 값으로 남기지 않는다.
+
+백엔드 실행 IAM Role에는 설정된 첨부 버킷 prefix의 `s3:PutObject` 권한을 부여한다.
+정적 access key는 주입하지 않는다. 시민 PWA가 고정 URL로 접근할 수 있도록 해당 공개
+prefix 또는 앞단 CloudFront 읽기 정책을 설정하되 버킷 전체를 공개하지 않는다.
 
 ## Database boundary
 

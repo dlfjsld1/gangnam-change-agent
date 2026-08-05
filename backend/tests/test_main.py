@@ -4,6 +4,7 @@ from app.main import (
     app,
     get_agent_execution_service,
     get_agent_repository,
+    get_policy_publish_service,
 )
 from app.repositories.agent_repository import ReviewConflict, ReviewNotFound
 from app.schemas.agent_api import AgentRunResponse
@@ -177,6 +178,14 @@ class FakeAdminQueryRepository:
             "policy_package": {"policy_id": "policy-admin"},
             "field_definition_proposals": [],
             "field_definition_reviews": [],
+        }
+
+
+class FakePolicyPublishService:
+    def approve(self, policy_id: str) -> dict[str, object]:
+        return {
+            "policy_id": policy_id,
+            "review": {"status": "approved"},
         }
 
 
@@ -366,3 +375,16 @@ def test_admin_query_rejects_invalid_filter_or_limit() -> None:
 
     assert invalid_status.status_code == 422
     assert invalid_limit.status_code == 422
+
+
+def test_policy_approval_uses_publish_service() -> None:
+    app.dependency_overrides[get_policy_publish_service] = (
+        lambda: FakePolicyPublishService()
+    )
+    try:
+        response = client.post("/api/policy-packages/policy-1/approve")
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert response.json()["review"]["status"] == "approved"
