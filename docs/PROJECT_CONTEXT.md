@@ -22,3 +22,11 @@ Gangnam Change Agent는 강남구 공고와 첨부문서의 변경을 Agent가 �
 ## MVP boundary
 
 현재는 fixture 기반 보일러플레이트다. 실제 Scrapling, HWPX/PDF 파싱, LangGraph 실행, 관리자 승인 UI, 시민 질문 화면은 각 담당 브랜치에서 구현한다.
+
+## Deployment architecture
+
+- Local persistence: SQLite via DATABASE_URL
+- AWS persistence: private RDS for PostgreSQL via App Runner VPC Connector
+- Shared data layer: SQLAlchemy 2 and Alembic
+- Secrets: RDS-managed password and App Runner DATABASE_URL reference in Secrets Manager
+- Container path: ECR to App Runner; private subnet internet egress uses one MVP NAT Gateway

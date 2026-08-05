@@ -40,6 +40,16 @@
 
 ## Change history
 
+### 2026-08-05 — 로컬 관리자 API 연결
+
+#### Summary
+
+관리자 검토 목록, 승인·수정·반려, AgentRun 조회 API를 fixture 기반 인메모리 상태로 연결했다.
+
+#### Tests
+
+- `pytest`: 8 passed
+
 ### 2026-08-04 — 다음 작업 큐 확정
 
 #### Summary
@@ -56,3 +66,14 @@
 
 - pytest: 7 passed
 - ruff check: passed
+
+### 2026-08-05 — SQLAlchemy·Alembic 저장 계층
+
+#### Summary
+
+DATABASE_URL 기반 SQLAlchemy 2 연결과 최초 Alembic migration을 추가하고 관리자 검토 및 AgentRun 상태를 SQLite/PostgreSQL 공통 JSON 테이블에 저장하도록 변경했다.
+
+#### Tests
+
+- SQLite alembic upgrade head: passed
+- pytest: 8 passed

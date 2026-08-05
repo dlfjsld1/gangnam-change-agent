@@ -27,3 +27,15 @@ def test_policy_package_can_be_loaded_by_id() -> None:
 
     assert response.status_code == 200
     assert response.json()["policy_id"] == "demo-policy-v2"
+
+
+def test_admin_can_approve_field_review() -> None:
+    reviews = client.get("/api/field-definition-reviews").json()
+    review_id = reviews[0]["review_id"]
+
+    response = client.post(f"/api/field-definition-reviews/{review_id}/approve")
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "approved"
+    run = client.get(f"/api/agent-runs/{reviews[0]['run_id']}").json()
+    assert run["review_required"] is False

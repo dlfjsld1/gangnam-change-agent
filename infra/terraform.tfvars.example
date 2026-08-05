@@ -1,0 +1,4 @@
+aws_region             = "ap-northeast-2"
+image_tag              = "latest"
+deploy_service         = false
+backend_cors_origins   = "https://ADMIN_DOMAIN,https://CITIZEN_DOMAIN"

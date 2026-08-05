@@ -15,7 +15,7 @@
 - [ ] `required_profile_fields`를 DynamicQuestion 입력과 연결한다.
 - [ ] 답변을 IndexedDB에 저장하고 저장 직후 정책을 다시 판정한다.
 - [ ] `stale-refresh-smoke.json`을 연결해 STALE 갱신 질문을 UNKNOWN 신규 질문보다 먼저 표시한다.
-- [ ] 승인된 정책 패키지만 읽는 API adapter와 fixture fallback을 연결한다.
+- [x] 승인된 정책 패키지만 읽는 API adapter를 연결한다.
 - [ ] 사용자 A/B 프로필 전환과 결과·해야 할 일 화면을 완성한다.
 
 ## Completion criteria
@@ -39,6 +39,16 @@
 - docs/contracts/field-definition.schema.json
 
 ## Change history
+
+### 2026-08-05 — 승인 정책 API 연결
+
+#### Summary
+
+승인된 정책 패키지를 Backend API에서 읽어 변경 내용과 행동 항목을 표시하도록 연결했다. 시민 프로필은 전송하지 않는다.
+
+#### Tests
+
+- `npm.cmd run build`: passed
 
 ### 2026-08-04 — 다음 작업 큐 확정
 

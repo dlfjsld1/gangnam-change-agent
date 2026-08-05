@@ -19,6 +19,7 @@
 - GET /api/field-definition-reviews
 - POST /api/field-definition-reviews/{review_id}/approve
 - POST /api/field-definition-reviews/{review_id}/reject
+- POST /api/field-definition-reviews/{review_id}/edit (`approved_field`를 검증한 뒤 승인)
 - GET /api/agent-runs/{run_id}
 
 HumanHandoff 별도 API는 만들지 않는다. 사람 검토 필요 상태는 AgentRun의 review_required, review_reason, unresolved_fields로 전달한다.

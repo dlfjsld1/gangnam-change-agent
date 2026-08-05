@@ -1,0 +1,25 @@
+output "aws_region" {
+  value = var.aws_region
+}
+
+output "ecr_repository_url" {
+  value = aws_ecr_repository.backend.repository_url
+}
+
+output "rds_endpoint" {
+  value = aws_db_instance.main.address
+}
+
+output "rds_master_secret_arn" {
+  value     = aws_db_instance.main.master_user_secret[0].secret_arn
+  sensitive = true
+}
+
+output "database_url_secret_arn" {
+  value = aws_secretsmanager_secret.database_url.arn
+}
+
+output "app_runner_url" {
+  value = var.deploy_service ? "https://${aws_apprunner_service.backend[0].service_url}" : null
+}
+

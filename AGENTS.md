@@ -418,7 +418,7 @@ Rules:
 - Local end-to-end operation comes before AWS deployment.
 - Do not spend more than one hour blocked on initial AWS configuration.
 - Prefer the simplest deployable architecture.
-- Do not introduce Kubernetes, complex VPC design, or Terraform for this MVP.
+- Do not introduce Kubernetes or complex VPC design. Terraform is the agreed deployment tool.
 - Keep `.env.example` current.
 - Verify CORS, API base URL, health checks, and HTTPS.
 - Keep fixed demo JSON as a fallback.

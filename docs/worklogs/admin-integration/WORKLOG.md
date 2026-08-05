@@ -14,7 +14,7 @@
 - [x] 원문 evidence, 제안 필드, 기존 canonical field 후보를 함께 표시한다.
 - [x] 승인·수정·반려 동작을 로컬 fixture 상태로 먼저 연결한다.
 - [x] AgentRun의 review_required, review_reason, unresolved_fields와 실행 로그를 표시한다.
-- [ ] 관리자 API 준비 후 fixture adapter를 실제 API adapter로 교체한다.
+- [x] 관리자 API 준비 후 fixture adapter를 실제 API adapter로 연결한다.
 - [ ] 승인된 PolicyPackage 공개 흐름과 시민 PWA 연결을 검증한다.
 - [ ] 로컬 통합 확인 후 AWS에 관리자 웹·시민 PWA·백엔드를 배포한다.
 
@@ -40,6 +40,17 @@
 
 ## Change history
 
+### 2026-08-05 — Backend 관리자 API 연결
+
+#### Summary
+
+승인·반려 버튼의 API 경로를 계약에 맞추고 fixture fallback을 유지한 채 LIVE API 동작을 연결했다.
+
+#### Verification
+
+- `npm.cmd run build`: passed
+- 로컬 관리자 페이지 및 API: HTTP 200
+
 ### 2026-08-04 — fixture 기반 관리자 검토 화면 구현
 
 #### Summary
@@ -61,3 +72,17 @@ fixture 기반 검토 화면부터 실제 API 통합과 AWS 배포까지의 순�
 #### Summary
 
 최신 동적 프로필 결정에 맞춰 관리자 검토 범위를 기록했다.
+
+### 2026-08-05 — Terraform AWS DB·Backend 배포 구성
+
+#### Summary
+
+Private RDS PostgreSQL, Secrets Manager, ECR, App Runner VPC Connector와 외부 공고 접근용 단일 NAT Gateway를 Terraform으로 구성했다. 비밀 값이 Terraform state에 들어가지 않는 2단계 배포 절차를 문서화했다.
+
+#### Verification
+
+- terraform fmt -recursive: passed
+- terraform init -backend=false: passed
+- terraform validate: passed
+- docker build (backend/Dockerfile): passed
+- 실제 AWS plan/apply: 미실행, AWS 계정과 배포 origin 필요

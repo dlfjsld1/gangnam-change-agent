@@ -35,7 +35,8 @@ export async function submitReview(
   field: FieldDefinition,
 ): Promise<void> {
   const body = action === "edit" ? JSON.stringify({ approved_field: field }) : undefined;
-  await request(`/api/field-definition-reviews/${encodeURIComponent(reviewId)}/${action}`, {
+  const endpointAction = action === "approved" ? "approve" : action === "rejected" ? "reject" : action;
+  await request(`/api/field-definition-reviews/${encodeURIComponent(reviewId)}/${endpointAction}`, {
     method: "POST",
     headers: body ? { "Content-Type": "application/json" } : undefined,
     body,
