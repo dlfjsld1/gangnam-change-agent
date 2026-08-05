@@ -47,6 +47,7 @@ export function App() {
   const [activeTab, setActiveTab] = useState("home");
   const [demoProfileName, setDemoProfileName] = useState<"A" | "B" | undefined>();
   const [demoProfile, setDemoProfile] = useState<LocalProfile>();
+  const [selectedPolicy, setSelectedPolicy] = useState<PolicyPackage>();
 
   useEffect(() => {
     void Promise.all([
@@ -119,6 +120,7 @@ export function App() {
             key={policy.policy_id}
             onAnswer={saveAnswer}
             onHide={hideCurrentPolicy}
+            onShowDetails={setSelectedPolicy}
             policy={policy}
             profile={activeProfile}
           />
@@ -149,6 +151,7 @@ export function App() {
         <button aria-current={activeTab === "changes" ? "page" : undefined} onClick={() => setActiveTab("changes")} type="button">▤<span>전체 변경</span></button>
         <button aria-current={activeTab === "profile" ? "page" : undefined} onClick={() => setActiveTab("profile")} type="button">♙<span>내 정보</span></button>
       </nav>
+      {selectedPolicy && <PolicyDetail policy={selectedPolicy} onClose={() => setSelectedPolicy(undefined)} />}
     </main>
   );
 }
@@ -158,6 +161,7 @@ interface PolicyCardProps {
   isSaving: boolean;
   onAnswer: (field: FieldDefinition, value: unknown) => Promise<void>;
   onHide: (policyId: string) => Promise<void>;
+  onShowDetails: (policy: PolicyPackage) => void;
   policy: PolicyPackage;
   profile: LocalProfile;
 }
@@ -197,7 +201,7 @@ function PolicyCard(props: PolicyCardProps) {
       ) : (
         <PolicyResult actions={props.policy.required_actions} status={status} />
       )}
-      <button className="detail-button" type="button">자세히 보기 <span>›</span></button>
+      <button className="detail-button" onClick={() => props.onShowDetails(props.policy)} type="button">자세히 보기 <span>›</span></button>
     </article>
   );
 }
@@ -213,6 +217,44 @@ function PolicyResult(props: { actions: PolicyPackage["required_actions"]; statu
     );
   }
   return <p className="result-copy">{props.status === "NO" ? "현재 조건으로는 관련 대상이 아니에요." : "현재 확인할 정보가 없어요."}</p>;
+}
+
+
+function PolicyDetail(props: { onClose: () => void; policy: PolicyPackage }) {
+  return (
+    <div className="detail-backdrop" role="presentation">
+      <section aria-labelledby="policy-detail-title" aria-modal="true" className="detail-sheet" role="dialog">
+        <div className="sheet-handle" />
+        <button aria-label="상세 화면 닫기" className="sheet-close" onClick={props.onClose} type="button">×</button>
+        <p className="policy-category">✦ {props.policy.category}</p>
+        <h2 id="policy-detail-title">{props.policy.title}</h2>
+        <p className="detail-summary">{props.policy.summary}</p>
+        <section className="detail-section">
+          <h3>무엇이 바뀌었나요?</h3>
+          {props.policy.changes.map((change) => (
+            <p key={change.change_id}><strong>{change.label}</strong> {formatChange(change.before)} → {formatChange(change.after)}</p>
+          ))}
+        </section>
+        <section className="detail-section">
+          <h3>신청 마감일</h3>
+          <p>{props.policy.deadline_at ?? "별도 마감일 없음"}</p>
+        </section>
+        <section className="detail-section">
+          <h3>해야 할 일</h3>
+          {props.policy.required_actions.map((action) => <p key={action.action_id}>{action.priority}. {action.label}</p>)}
+        </section>
+        <section className="detail-section evidence-section">
+          <h3>변경 근거</h3>
+          {props.policy.evidence.map((evidence) => (
+            <blockquote key={evidence.evidence_id}>
+              <p>“{evidence.quote}”</p>
+              <footer>{evidence.document_name} · {evidence.location}</footer>
+            </blockquote>
+          ))}
+        </section>
+      </section>
+    </div>
+  );
 }
 
 

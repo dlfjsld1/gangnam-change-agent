@@ -7,6 +7,7 @@ export type PolicyPackage = {
   title: string;
   category: string;
   summary: string;
+  deadline_at: string | null;
   eligibility_rule: EligibilityRule;
   required_profile_fields: FieldDefinition[];
   changes: Array<{
@@ -20,6 +21,13 @@ export type PolicyPackage = {
     action_id: string;
     label: string;
     priority: number;
+  }>;
+  evidence: Array<{
+    evidence_id: string;
+    document_name: string;
+    location: string;
+    quote: string;
+    source_url: string;
   }>;
   review: {
     status: "pending" | "approved" | "rejected";
