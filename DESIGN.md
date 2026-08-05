@@ -28,7 +28,7 @@
 ## Information architecture
 
 - Primary navigation: 홈, 전체 변경, 내 정보
-- Core routes/screens: 정책 카드 피드 홈, 카드 상세(후속), 로컬 프로필(후속)
+- Core routes/screens: 정책 카드 피드 홈, 카드 상세, 첫 실행 정보 입력, 저장한 값 확인·수정이 가능한 로컬 프로필
 - Content hierarchy: 개인 관련 변화 수 → 개인정보 안내 → 한 장씩 넘기는 정책 카드 피드 → 하단 탐색
 
 ## Design principles
@@ -50,7 +50,7 @@
 ## Components
 
 - Existing components to reuse: `DynamicQuestion`, 로컬 프로필·matcher 모듈
-- New/changed components: 정책 카드, 상태 배지, 로컬 전용 안내, 카드 피드 빈 상태, 하단 탐색
+- New/changed components: 정책 카드, 상태 배지, 로컬 전용 안내, 첫 실행 정보 입력, 저장 프로필 목록·수정, 하단 탐색
 - Variants and states: YES/NO/UNKNOWN/STALE, 숨김, 빈 상태, 질문 저장 중
 - Token/component ownership: 시민 PWA의 CSS 변수와 `frontend/citizen/**`
 

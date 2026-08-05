@@ -105,6 +105,7 @@ export function App() {
   async function completeProfile(nextProfile: LocalProfile) {
     await saveProfile(nextProfile);
     setProfile(nextProfile);
+    setActiveTab(onboardingMode === "edit" ? "profile" : "home");
     setOnboardingMode(undefined);
   }
 
@@ -118,6 +119,13 @@ export function App() {
           onComplete={completeProfile}
           onClose={onboardingMode === "edit" ? () => setOnboardingMode(undefined) : undefined}
           policy={policies[0] ?? fixturePolicies[0]}
+        />
+      ) : <>
+      {activeTab === "profile" ? (
+        <ProfilePage
+          fields={(policies[0] ?? fixturePolicies[0]).required_profile_fields}
+          onEdit={() => setOnboardingMode("edit")}
+          profile={profile}
         />
       ) : <>
       <header className="hero">
@@ -164,15 +172,41 @@ export function App() {
           </section>
         )}
       </div>
+      </>}
 
       <nav aria-label="주요 메뉴" className="bottom-nav">
         <button aria-current={activeTab === "home" ? "page" : undefined} onClick={() => setActiveTab("home")} type="button">⌂<span>홈</span></button>
         <button aria-current={activeTab === "changes" ? "page" : undefined} onClick={() => setActiveTab("changes")} type="button">▤<span>전체 변경</span></button>
-        <button aria-current={activeTab === "profile" ? "page" : undefined} onClick={() => { setActiveTab("profile"); setOnboardingMode("edit"); }} type="button">♙<span>내 정보</span></button>
+        <button aria-current={activeTab === "profile" ? "page" : undefined} onClick={() => setActiveTab("profile")} type="button">♙<span>내 정보</span></button>
       </nav>
       {selectedPolicy && <PolicyDetail policy={selectedPolicy} onClose={() => setSelectedPolicy(undefined)} />}
       </>}
     </main>
+  );
+}
+
+
+function ProfilePage(props: { fields: FieldDefinition[]; onEdit: () => void; profile: LocalProfile }) {
+  const fields = props.fields.filter((field) => field.review_status === "approved");
+
+  return (
+    <section className="profile-page" aria-labelledby="profile-title">
+      <p className="profile-eyebrow">내 기기에만 저장됨</p>
+      <h1 id="profile-title">내 정보</h1>
+      <p className="profile-description">공고 조건을 비교하기 위해 저장한 정보예요.</p>
+      <div className="profile-privacy">
+        중앙 서버에 개인 프로필을 모으지 않아 대규모 유출 위험을 줄입니다.
+      </div>
+      <section className="profile-values" aria-label="저장한 정보">
+        {fields.map((field) => (
+          <div className="profile-value" key={field.key}>
+            <span>{field.label}</span>
+            <strong>{formatProfileValue(field, props.profile[field.key]?.value)}</strong>
+          </div>
+        ))}
+      </section>
+      <button className="profile-edit-button" onClick={props.onEdit} type="button">정보 수정하기</button>
+    </section>
   );
 }
 
@@ -318,7 +352,7 @@ function Onboarding(props: OnboardingProps) {
         <p className="onboarding-brand">강남 Change Agent</p>
         <h1>나에게 맞는 공고를<br />찾아드릴게요</h1>
         <p>입력한 정보는 이 기기에만 저장돼요.</p>
-        <div className="onboarding-privacy">⌾ 서버로 전송하지 않아요</div>
+        <div className="onboarding-privacy">중앙 서버에 개인 프로필을 모으지 않아 대규모 유출 위험을 줄입니다.</div>
         <button className="onboarding-primary" onClick={() => setStarted(true)} type="button">시작하기</button>
       </section>
     );
@@ -335,6 +369,20 @@ function Onboarding(props: OnboardingProps) {
       {field && <DynamicQuestion field={field} onAnswer={answer} pending={isSaving} reason="unknown" />}
     </section>
   );
+}
+
+
+function formatProfileValue(field: FieldDefinition, value: unknown): string {
+  if (value === undefined || value === null || value === "") {
+    return "아직 입력하지 않음";
+  }
+  if (field.allowed_values) {
+    return field.allowed_values.find((option) => option.value === value)?.label ?? String(value);
+  }
+  if (typeof value === "boolean") {
+    return value ? "예" : "아니요";
+  }
+  return String(value);
 }
 
 
