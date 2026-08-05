@@ -29,6 +29,11 @@ Before creating or changing the backend Dockerfile, container runtime, or AWS ba
 deployment, read `docs/deployment/BACKEND_CONTAINER_HANDOFF.md` after this file and
 before the Admin·Integration Work log.
 
+Before changing Citizen PWA or Admin UI code that displays policy evidence, original
+notices, or attachments, read
+`docs/contracts/PUBLIC_ATTACHMENT_FRONTEND_INTEGRATION.md` after
+`docs/contracts/api.md` and before the mapped frontend Work log.
+
 ### Delegated Task exception
 
 When the user explicitly assigns a document under `docs/tasks/`, use this narrow

@@ -89,8 +89,14 @@ class AgentRepository:
                 .where(FieldDefinitionProposalRecord.run_id == run_id)
                 .order_by(FieldDefinitionReviewRecord.created_at)
             ).all()
+            notice = (
+                session.get(SourceNoticeRecord, agent_run.notice_key)
+                if agent_run.notice_key is not None
+                else None
+            )
             return {
                 "agent_run": agent_run.payload,
+                "source_notice": notice.payload if notice is not None else None,
                 "policy_package": package.payload if package is not None else None,
                 "field_definition_proposals": [
                     proposal.payload for proposal in proposals
@@ -252,8 +258,44 @@ class AgentRepository:
             proposal.review_status = "rejected"
             return review_payload
 
-    def approve_policy_package(self, policy_id: str) -> dict[str, Any]:
-        return self._set_policy_review_status(policy_id, "approved")
+    def save_source_notice(self, notice: SourceNotice) -> None:
+        with self._session_factory.begin() as session:
+            notice_key = _notice_key(notice)
+            session.merge(_notice_record(notice, notice_key))
+
+    def get_policy_publish_context(
+        self,
+        policy_id: str,
+    ) -> tuple[dict[str, Any], SourceNotice | None]:
+        with self._session_factory() as session:
+            package = session.get(PolicyPackageRecord, policy_id)
+            if package is None:
+                raise PolicyPackageNotFound(policy_id)
+            _ensure_policy_publishable(session, package)
+            run = session.get(AgentRunRecord, package.run_id)
+            notice_record = (
+                session.get(SourceNoticeRecord, run.notice_key)
+                if run is not None and run.notice_key is not None
+                else None
+            )
+            notice = (
+                SourceNotice.model_validate(notice_record.payload)
+                if notice_record is not None
+                else None
+            )
+            return deepcopy(package.payload), notice
+
+    def approve_policy_package(
+        self,
+        policy_id: str,
+        *,
+        policy_package: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        return self._set_policy_review_status(
+            policy_id,
+            "approved",
+            policy_package=policy_package,
+        )
 
     def reject_policy_package(self, policy_id: str) -> dict[str, Any]:
         return self._set_policy_review_status(policy_id, "rejected")
@@ -262,6 +304,8 @@ class AgentRepository:
         self,
         policy_id: str,
         status: str,
+        *,
+        policy_package: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         with self._session_factory.begin() as session:
             package = session.get(PolicyPackageRecord, policy_id)
@@ -271,18 +315,12 @@ class AgentRepository:
                 raise ReviewConflict("Policy package review is already completed.")
 
             if status == "approved":
-                proposals = session.scalars(
-                    select(FieldDefinitionProposalRecord).where(
-                        FieldDefinitionProposalRecord.run_id == package.run_id
-                    )
-                ).all()
-                if any(proposal.review_status != "approved" for proposal in proposals):
-                    raise ReviewConflict(
-                        "All field definition reviews must be approved before publish."
-                    )
+                _ensure_policy_publishable(session, package)
 
             reviewed_at = datetime.now(timezone.utc).isoformat()
-            payload = deepcopy(package.payload)
+            payload = deepcopy(policy_package or package.payload)
+            if payload.get("policy_id") != policy_id:
+                raise ReviewConflict("Published policy payload id does not match.")
             payload["review"] = {
                 "status": status,
                 "reviewed_at": reviewed_at,
@@ -401,6 +439,23 @@ class PolicyPackageNotFound(LookupError):
 
 class ReviewConflict(RuntimeError):
     pass
+
+
+def _ensure_policy_publishable(
+    session: Session,
+    package: PolicyPackageRecord,
+) -> None:
+    if package.review_status != "pending":
+        raise ReviewConflict("Policy package review is already completed.")
+    proposals = session.scalars(
+        select(FieldDefinitionProposalRecord).where(
+            FieldDefinitionProposalRecord.run_id == package.run_id
+        )
+    ).all()
+    if any(proposal.review_status != "approved" for proposal in proposals):
+        raise ReviewConflict(
+            "All field definition reviews must be approved before publish."
+        )
 
 
 def _replace_policy_field(

@@ -171,8 +171,15 @@ Task 수행자는 다음 순서만 읽고 구현을 시작한다.
 - Agent 실행 로그
 - human handoff
 - API 요청·응답
+- 공개 근거 첨부의 관리자·PWA 통합
 
 공통 JSON이나 API가 바뀌면 구현보다 계약 문서를 먼저 수정한다.
+
+공개 근거 첨부를 화면에 연결하는 Citizen/Admin 담당 Codex는 다음을 추가로 읽는다.
+
+1. `docs/contracts/PUBLIC_ATTACHMENT_FRONTEND_INTEGRATION.md`
+2. `docs/contracts/api.md`
+3. 자신의 담당 Work log
 
 ## `docs/worklogs/`
 
@@ -204,7 +211,8 @@ Work log는 프로젝트 전체 기획을 공지하는 파일이 아니다.
 2. `docs/deployment/BACKEND_CONTAINER_HANDOFF.md`
 3. `docs/DECISIONS.md`의 데이터베이스·보안 결정
 4. `docs/contracts/api.md`
-5. `docs/worklogs/admin-integration/WORKLOG.md`
+5. `docs/contracts/PUBLIC_ATTACHMENT_FRONTEND_INTEGRATION.md`
+6. `docs/worklogs/admin-integration/WORKLOG.md`
 
 ### 현재 백엔드 배포 인계
 
@@ -223,6 +231,9 @@ Work log는 프로젝트 전체 기획을 공지하는 파일이 아니다.
   `docs/worklogs/admin-integration/WORKLOG.md`에 기록한다.
 - 실패 원인이 백엔드 API나 repository이면 Agent·백엔드 담당에게 전달하고, Agent
   topology나 parser를 배포 작업에서 임의로 수정하지 않는다.
+- 공개 첨부 프론트 연결은
+  `docs/contracts/PUBLIC_ATTACHMENT_FRONTEND_INTEGRATION.md`의 관리자·PWA 절차를
+  따른다.
 
 ---
 
@@ -410,6 +421,8 @@ Agent가 정책 조건 추출
 - `UNKNOWN → 질문 → 저장 → 재판정`
 - 답변은 IndexedDB에만 저장
 - 서버로 시민 프로필이나 판정 결과를 보내지 않음
+- 승인 정책 evidence의 S3·CloudFront 또는 공식 원문 URL 표시
+- 첨부 접근 실패와 로컬 정책 판정 흐름 분리
 
 ### 관리자·통합
 
@@ -419,6 +432,8 @@ Agent가 정책 조건 추출
 - 질문·허용값 수정
 - 승인·반려
 - 승인된 필드만 시민 API에 공개
+- 실행 상세의 원본 공고·첨부 표시
+- 정책 최종 승인 후 S3 공개 URL 갱신과 409/503 처리
 
 ## 공통 계약 변경
 
