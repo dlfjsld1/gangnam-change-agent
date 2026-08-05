@@ -4,6 +4,7 @@ from scrapling.parser import Selector
 from app.tools.scrapling_adapter import (
     NoticeParseError,
     discover_detail_urls,
+    discover_source_detail_urls,
     parse_source_notice,
 )
 
@@ -86,6 +87,41 @@ def test_list_discovery_deduplicates_supported_detail_urls() -> None:
     assert discover_detail_urls(page, list_url) == [
         "https://www.gangnam.go.kr/notice/view.do"
         "?not_ancmt_mgt_no=61922&mid=ID05_040201"
+    ]
+
+
+def test_source_discovery_fetches_each_board_and_deduplicates_urls() -> None:
+    first_list = "https://www.gangnam.go.kr/notice/list.do?mid=ID05_040201"
+    second_list = "https://www.gangnam.go.kr/notice/list.do?mid=ID05_040202"
+    shared_url = "/notice/view.do?not_ancmt_mgt_no=61922&mid=ID05_040201"
+
+    class FakeFetcher:
+        def __init__(self) -> None:
+            self.urls: list[str] = []
+
+        def fetch(self, notice_url: str) -> Selector:
+            self.urls.append(notice_url)
+            unique_url = (
+                "/notice/view.do?not_ancmt_mgt_no=61923&mid=ID05_040202"
+                if notice_url == second_list
+                else ""
+            )
+            return Selector(
+                content=f'<a href="{shared_url}">공통</a>'
+                f'<a href="{unique_url}">신규</a>',
+                url=notice_url,
+            )
+
+    fetcher = FakeFetcher()
+
+    urls = discover_source_detail_urls(fetcher, (first_list, second_list))
+
+    assert fetcher.urls == [first_list, second_list]
+    assert urls == [
+        "https://www.gangnam.go.kr/notice/view.do"
+        "?not_ancmt_mgt_no=61922&mid=ID05_040201",
+        "https://www.gangnam.go.kr/notice/view.do"
+        "?not_ancmt_mgt_no=61923&mid=ID05_040202",
     ]
 
 

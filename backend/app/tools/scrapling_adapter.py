@@ -61,6 +61,23 @@ def discover_detail_urls(page: Selector, list_url: str) -> list[str]:
     return discovered_urls
 
 
+def discover_source_detail_urls(
+    fetcher: NoticeFetcher | None = None,
+    list_urls: tuple[str, ...] = SOURCE_LIST_URLS,
+) -> list[str]:
+    active_fetcher = fetcher or ScraplingNoticeFetcher()
+    discovered_urls: list[str] = []
+    seen_urls: set[str] = set()
+    for list_url in list_urls:
+        page = active_fetcher.fetch(list_url)
+        for detail_url in discover_detail_urls(page, list_url):
+            if detail_url in seen_urls:
+                continue
+            seen_urls.add(detail_url)
+            discovered_urls.append(detail_url)
+    return discovered_urls
+
+
 def parse_source_notice(page: Selector, source_url: str) -> SourceNotice:
     _validate_source_url(source_url)
     parsed_url = urlparse(source_url)

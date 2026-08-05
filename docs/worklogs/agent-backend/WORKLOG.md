@@ -3,9 +3,9 @@
 ## Current status
 
 - Current milestone: PostgreSQL 배포 통합 준비
-- Working: health API, 실제 Agent 실행·조회 API, 공통 계약, 공식 게시판 수집, HTML·PDF·HWPX 추출, 최후 복구용 OpenAI 이미지 OCR adapter, 동일 문서 변형 교차 검증, 구조화 정책 후보와 PolicyPackage 조립, Field Registry 해석, Human Review 결과 생성, LangGraph 실행 흐름과 AgentRun 로그 누적, SQLite/PostgreSQL 공용 저장소 계층, 관리자 실행·검토·정책 목록과 상세 조회 API, 관리자 필드 검토 API, 정책 승인·반려와 승인 정책 Publish, 승인된 공개 근거 첨부 S3 archive
+- Working: health API, 실제 Agent 실행·조회 API, 관리자 수동 새 공고 확인 API, 공통 계약, 공식 게시판 수집, HTML·PDF·HWPX 추출, 최후 복구용 OpenAI 이미지 OCR adapter, 동일 문서 변형 교차 검증, 구조화 정책 후보와 PolicyPackage 조립, Field Registry 해석, Human Review 결과 생성, LangGraph 실행 흐름과 AgentRun 로그 누적, SQLite/PostgreSQL 공용 저장소 계층, 관리자 실행·검토·정책 목록과 상세 조회 API, 관리자 필드 검토 API, 정책 승인·반려와 승인 정책 Publish, 승인된 공개 근거 첨부 S3 archive
 - In progress: 관리자·통합 담당의 컨테이너와 PostgreSQL 연결 지원, 배포 전체 흐름 smoke 준비
-- Not implemented: PostgreSQL live integration, 관리자 API 인증·접근 제한
+- Not implemented: PostgreSQL live integration, 관리자 API 인증·접근 제한, 새 공고 주기 실행
 - Blockers: none
 
 ## Next actions
@@ -27,6 +27,7 @@
 - [x] 승인된 PolicyPackage만 시민 API에 공개하도록 Publish 흐름을 연결한다.
 - [x] 관리자 화면용 AgentRun·검토·PolicyPackage 목록과 실행 상세 조회 API를 연결한다.
 - [x] 승인된 공개 근거 첨부를 S3 고정 URL로 제공하는 Publish 흐름을 연결한다.
+- [x] 관리자 요청 시 공식 게시판을 크롤링하고 새 공고를 Agent로 실행하는 API를 연결한다.
 - [ ] 배포 PostgreSQL에서 Agent 실행·검토·Publish smoke를 수행한다.
 
 ## Completion criteria
@@ -51,6 +52,24 @@
 - docs/contracts/field-definition-proposal.schema.json
 
 ## Change history
+
+### 2026-08-05 — 관리자 수동 새 공고 확인 API
+
+#### Summary
+
+`POST /api/notice-discovery-runs` 호출 시 Scrapling 정적 Fetcher로 확정된 강남구 공식 게시판 3곳을 조회한다. 상세 URL을 중복 제거하고 DB에 이미 저장된 원문 URL을 건너뛴 뒤, 최신 목록 순서에서 새 공고를 최대 요청 개수만큼 기존 LangGraph Agent 실행·저장 흐름에 넣는다. 주기 실행은 추가하지 않았다.
+
+#### Contract impact
+
+`docs/contracts/api.md`에 additive 수동 실행 endpoint와 요청·응답을 추가했다. PolicyPackage, AgentRun과 시민 데이터 계약은 변경하지 않았다.
+
+#### Validation
+
+- Scrapling 목록 fetch와 게시판 간 URL 중복 제거 test: passed
+- 저장된 원문 URL 제외와 첫 신규 공고 Agent 실행 test: passed
+- API 기본 처리 개수, 잘못된 개수 422, 목록 장애 503 test: passed
+- ruff check: passed
+- pytest: 83 passed
 
 ### 2026-08-05 — 승인 근거 첨부 S3 공개 archive
 

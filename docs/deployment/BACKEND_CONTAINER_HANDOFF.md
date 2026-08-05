@@ -38,6 +38,8 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000
 - `GET /health`가 `{"status":"ok"}`를 반환한다.
 - 승인 정책 fixture 조회 API가 실행된다.
 - `POST /api/agent-runs`가 LangGraph를 실행하고 결과를 DB에 저장한다.
+- `POST /api/notice-discovery-runs`가 강남구 공식 게시판을 Scrapling Fetcher로
+  조회하고 미처리 공고를 Agent에 넣는다.
 - `GET /api/agent-runs/{run_id}`가 저장된 AgentRun을 조회한다.
 - FieldDefinitionReview 목록·승인·수정·반려 API가 DB 검토 상태를 변경한다.
 - AgentRun 목록과 실행별 정책·필드 제안·검토 묶음 조회 API를 제공한다.

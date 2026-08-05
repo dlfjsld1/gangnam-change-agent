@@ -105,6 +105,10 @@ def test_sqlite_repository_persists_agent_result_and_proposal(tmp_path: Path) ->
         field_reviews=[_review(proposal)],
     )
 
+    assert repository.has_source_url(_notice().source_url) is True
+    assert (
+        repository.has_source_url("https://www.gangnam.go.kr/notice/missing") is False
+    )
     assert repository.get_agent_run("run-1")["review_required"] is True
     assert repository.get_policy_package(package["policy_id"]) == package
     assert repository.get_approved_policy_package(package["policy_id"]) is None
