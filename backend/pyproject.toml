@@ -9,12 +9,20 @@ description = "Gangnam Change Agent bootstrap API"
 requires-python = ">=3.11"
 dependencies = [
   "fastapi>=0.116,<1.0",
+  "langgraph>=1.2,<2.0",
+  "openai>=2,<3",
+  "pypdf>=6,<7",
+  "pypdfium2>=5,<6",
+  "psycopg[binary]>=3.2,<4.0",
+  "scrapling[fetchers]>=0.4,<0.5",
+  "sqlalchemy>=2.0,<3.0",
   "uvicorn[standard]>=0.35,<1.0"
 ]
 
 [project.optional-dependencies]
 dev = [
   "httpx>=0.28,<1.0",
+  "jsonschema>=4.25,<5",
   "pytest>=9,<10"
 ]
 
