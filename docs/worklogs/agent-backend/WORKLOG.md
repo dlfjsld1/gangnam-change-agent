@@ -3,7 +3,7 @@
 ## Current status
 
 - Current milestone: 공식 강남구 게시판 수집 adapter
-- Working: health API, 승인 정책 fixture API, 공통 계약, 공식 게시판 수집, HTML·PDF·HWPX 추출, 최후 복구용 OpenAI 이미지 OCR adapter, 동일 문서 변형 교차 검증, 구조화 정책 후보와 PolicyPackage 조립
+- Working: health API, 승인 정책 fixture API, 공통 계약, 공식 게시판 수집, HTML·PDF·HWPX 추출, 최후 복구용 OpenAI 이미지 OCR adapter, 동일 문서 변형 교차 검증, 구조화 정책 후보와 PolicyPackage 조립, Human Review 결과 생성
 - In progress: LangGraph 전체 노드·도구 실행 로그 연결
 - Not implemented: DB, LangGraph 실행
 - Blockers: none
@@ -43,6 +43,29 @@
 - docs/contracts/field-definition-proposal.schema.json
 
 ## Change history
+
+### 2026-08-05 — TASK-002 Human Review 결과 생성
+
+#### Summary
+
+근거 불일치·추출 실패·미승인 field 사유를 최초 등장 순서로 중복 제거해 AgentRun에 기록하고, PolicyPackage review를 pending으로 유지하며 신규 FieldDefinitionProposal마다 pending FieldDefinitionReview를 생성하도록 Graph 독립 service를 연결했다.
+
+#### Contract impact
+
+기존 AgentRun, PolicyPackage, FieldDefinitionProposal, FieldDefinitionReview 계약을 그대로 사용했다. Graph·State·Publish API·DB·관리자 UI와 공통 schema는 변경하지 않았다.
+
+#### Validation
+
+- TASK-002 변경 파일 ruff check: passed
+- TASK-002 변경 파일 ruff format --check: passed
+- 전체 backend pytest: 36 passed, 5 warnings
+- AgentRun, PolicyPackage, FieldDefinitionProposal, FieldDefinitionReview JSON Schema validation: passed
+- repository 전체 ruff check: 기존 파일의 27개 위반으로 failed; TASK-002 변경 파일은 통과
+
+#### Dependencies
+
+- LangGraph 최종 node 등록과 ChangeAgentState mapping은 Agent Backend 담당 작업으로 남는다.
+- pending review 저장과 관리자 API 연동은 Publish API·DB 구현 이후 연결한다.
 
 ### 2026-08-05 — FieldDefinition 재사용과 신규 제안 연결
 
