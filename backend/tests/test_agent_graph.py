@@ -122,6 +122,7 @@ def _runtime(
             policy_package=_policy_package(),
             evidence_issues=[],
             field_proposals=[],
+            field_reviews=[],
             agent_run=AgentRun(
                 run_id="run-graph",
                 notice_id=notice.source_id,

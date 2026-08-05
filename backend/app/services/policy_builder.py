@@ -1,7 +1,7 @@
 import re
 from difflib import SequenceMatcher
 
-from app.schemas.agent_run import AgentNodeLog, AgentRun
+from app.schemas.agent_run import AgentNodeLog
 from app.schemas.document_extraction import DocumentExtraction, NoticeDocumentCorpus
 from app.schemas.field_definition import FieldDefinition
 from app.schemas.policy_extraction import (
@@ -12,6 +12,7 @@ from app.schemas.policy_extraction import (
 )
 from app.schemas.source_notice import SourceNotice
 from app.services.field_registry import FieldRegistry
+from app.services.human_review import build_human_review
 
 MINIMUM_TITLE_OCR_SIMILARITY = 0.55
 
@@ -124,20 +125,21 @@ def build_policy_package(
             ),
         ),
     ]
+    agent_run, field_reviews = build_human_review(
+        run_id=run_id,
+        notice_id=notice.source_id,
+        policy_id=policy_id if package is not None else None,
+        node_logs=node_logs,
+        reasons=reasons,
+        unresolved_fields=field_resolution.unresolved_fields,
+        field_proposals=field_resolution.field_proposals,
+    )
     return PolicyBuildResult(
         policy_package=package,
         evidence_issues=issues,
         field_proposals=field_resolution.field_proposals,
-        agent_run=AgentRun(
-            run_id=run_id,
-            notice_id=notice.source_id,
-            status="review_required" if review_required else "completed",
-            node_logs=node_logs,
-            review_required=review_required,
-            review_reason="; ".join(reasons) or None,
-            unresolved_fields=field_resolution.unresolved_fields,
-            policy_id=policy_id if package is not None else None,
-        ),
+        field_reviews=field_reviews,
+        agent_run=agent_run,
     )
 
 

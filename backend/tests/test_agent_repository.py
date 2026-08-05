@@ -8,10 +8,18 @@ from sqlalchemy.dialects import postgresql
 from sqlalchemy.schema import CreateTable
 
 from app.database import Database
-from app.db_models import Base, FieldDefinitionProposalRecord
+from app.db_models import (
+    Base,
+    FieldDefinitionProposalRecord,
+    FieldDefinitionReviewRecord,
+)
 from app.repositories.agent_repository import AgentRepository
 from app.schemas.agent_run import AgentNodeLog, AgentRun
-from app.schemas.field_definition import FieldDefinition, FieldDefinitionProposal
+from app.schemas.field_definition import (
+    FieldDefinition,
+    FieldDefinitionProposal,
+    FieldDefinitionReview,
+)
 from app.schemas.source_notice import SourceNotice
 
 
@@ -68,18 +76,27 @@ def _proposal() -> FieldDefinitionProposal:
     )
 
 
+def _review(proposal: FieldDefinitionProposal) -> FieldDefinitionReview:
+    return FieldDefinitionReview(
+        review_id=f"run-1:{proposal.proposed_field.key}",
+        proposal=proposal,
+    )
+
+
 def test_sqlite_repository_persists_agent_result_and_proposal(tmp_path: Path) -> None:
     database = Database(f"sqlite:///{tmp_path / 'agent.db'}")
     database.create_schema()
     repository = AgentRepository(database.session_factory)
     package = deepcopy(APPROVED_POLICY)
     package["review"] = {"status": "pending", "reviewed_at": None}
+    proposal = _proposal()
 
     repository.save_execution(
         _agent_run("run-1", package["policy_id"]),
         notice=_notice(),
         policy_package=package,
-        field_proposals=[_proposal()],
+        field_proposals=[proposal],
+        field_reviews=[_review(proposal)],
     )
 
     assert repository.get_agent_run("run-1")["review_required"] is True
@@ -88,7 +105,11 @@ def test_sqlite_repository_persists_agent_result_and_proposal(tmp_path: Path) ->
         proposal_count = session.scalar(
             select(func.count()).select_from(FieldDefinitionProposalRecord)
         )
+        review_count = session.scalar(
+            select(func.count()).select_from(FieldDefinitionReviewRecord)
+        )
     assert proposal_count == 1
+    assert review_count == 1
     assert set(inspect(database.engine).get_table_names()) == {
         "agent_runs",
         "field_definition_proposals",

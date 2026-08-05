@@ -6,11 +6,12 @@ from sqlalchemy.orm import Session, sessionmaker
 from app.db_models import (
     AgentRunRecord,
     FieldDefinitionProposalRecord,
+    FieldDefinitionReviewRecord,
     PolicyPackageRecord,
     SourceNoticeRecord,
 )
 from app.schemas.agent_run import AgentRun
-from app.schemas.field_definition import FieldDefinitionProposal
+from app.schemas.field_definition import FieldDefinitionProposal, FieldDefinitionReview
 from app.schemas.source_notice import SourceNotice
 
 
@@ -25,6 +26,7 @@ class AgentRepository:
         notice: SourceNotice | None = None,
         policy_package: dict[str, Any] | None = None,
         field_proposals: list[FieldDefinitionProposal] | None = None,
+        field_reviews: list[FieldDefinitionReview] | None = None,
     ) -> None:
         with self._session_factory.begin() as session:
             notice_key = None
@@ -36,6 +38,8 @@ class AgentRepository:
                 session.merge(_policy_package_record(agent_run.run_id, policy_package))
             for proposal in field_proposals or []:
                 session.merge(_proposal_record(agent_run.run_id, proposal))
+            for review in field_reviews or []:
+                session.merge(_review_record(review))
 
     def get_agent_run(self, run_id: str) -> dict[str, Any] | None:
         with self._session_factory() as session:
@@ -121,4 +125,14 @@ def _proposal_record(
         field_key=field_key,
         review_status="pending",
         payload=proposal.model_dump(mode="json"),
+    )
+
+
+def _review_record(review: FieldDefinitionReview) -> FieldDefinitionReviewRecord:
+    return FieldDefinitionReviewRecord(
+        review_id=review.review_id,
+        proposal_id=review.review_id,
+        status=review.status,
+        payload=review.model_dump(mode="json"),
+        reviewed_at=review.reviewed_at,
     )
