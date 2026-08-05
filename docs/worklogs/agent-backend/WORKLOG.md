@@ -3,17 +3,18 @@
 ## Current status
 
 - Current milestone: 공식 강남구 게시판 수집 adapter
-- Working: health API, 승인 정책 fixture API, 공통 계약, 공식 게시판 수집, HTML·PDF·HWPX 추출과 동일 문서 변형 교차 검증
-- In progress: 이미지 OCR 공급자 결정과 형식별 추출 결과의 정책 조건 비교
-- Not implemented: 이미지 OCR, DB, LangGraph 실행
-- Blockers: 이미지 OCR 공급자 미확정
+- Working: health API, 승인 정책 fixture API, 공통 계약, 공식 게시판 수집, HTML·PDF·HWPX 추출, OpenAI 이미지 OCR adapter, 동일 문서 변형 교차 검증
+- In progress: OpenAI OCR live smoke와 형식별 추출 결과의 정책 조건 비교
+- Not implemented: DB, LangGraph 실행
+- Blockers: OpenAI OCR live smoke에는 `OPENAI_API_KEY` 필요
 
 ## Next actions
 
 - [x] 데모에 사용할 공식 게시판과 네 시나리오의 공고 후보를 확정한다.
 - [x] 통합 공고와 주민센터 새소식의 본문·첨부파일 링크를 구조화한다.
 - [x] HTML과 동일 문서의 PDF·HWPX를 파싱하고 동일 basename의 형식별 결과를 교차 검증한다.
-- [ ] 이미지 OCR 공급자를 연결해 동일 basename의 이미지도 같은 비교 흐름에 포함한다.
+- [x] 이미지와 스캔 PDF 페이지를 OpenAI Responses API OCR 흐름에 연결한다.
+- [ ] 공개 스캔 공고로 OpenAI OCR live smoke를 수행한다.
 - [ ] 추출 결과를 EligibilityRule과 PolicyPackage 구조로 변환한다.
 - [ ] 기존 FieldDefinition 재사용 또는 FieldDefinitionProposal 생성을 연결한다.
 - [x] 문서 추출·근거 비교 로그와 review_required 사유를 AgentRun에 기록한다.
@@ -41,6 +42,24 @@
 - docs/contracts/field-definition-proposal.schema.json
 
 ## Change history
+
+### 2026-08-05 — PDF 페이지 분류와 OpenAI OCR adapter
+
+#### Summary
+
+PDF의 각 페이지를 로컬 텍스트 또는 스캔 페이지로 분류하고, 스캔 페이지만 PNG로 렌더링해 OpenAI Responses API OCR에 보내도록 연결했다. 혼합 PDF는 페이지 순서와 처리 방법을 보존한다.
+
+#### Contract impact
+
+공통 API schema는 변경하지 않았고 D-005에 내부 처리 결정을 기록했다.
+
+#### Tests
+
+- ruff check: passed
+- ruff format --check: passed
+- pytest: 25 passed
+- OpenAI 요청: fake client로 Responses API payload 검증
+- Live OpenAI call: API key가 없어 미실행
 
 ### 2026-08-05 — 문서 분석 AgentRun 연결
 

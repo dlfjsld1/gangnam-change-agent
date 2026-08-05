@@ -45,3 +45,16 @@
 - Reason: 배포 형식에 따른 누락과 파싱 오류를 교차 검증하고 관리자에게 근거 충돌을 노출하기 위함이다.
 - Affected areas: backend, frontend/admin
 - Contract impact: 현재 AgentRun의 `review_required`, `review_reason`, `unresolved_fields`로 표현 가능하므로 공통 schema 변경 없음
+
+## D-005 — PDF 페이지별 로컬 추출과 OpenAI OCR 분기
+
+- Date: 2026-08-05
+- Status: accepted
+- Decision: PDF는 페이지별로 로컬 텍스트를 먼저 추출하고, 의미 있는 문자가 부족한 스캔 페이지만 이미지로 렌더링해 OpenAI Responses API OCR에 전달한다.
+- Mixed PDF: 텍스트 페이지와 OCR 페이지를 원래 페이지 순서로 병합하고 각 페이지의 처리 방법을 기록한다.
+- Image attachments: 이미지 첨부는 OpenAI Responses API OCR을 사용한다.
+- Privacy: OpenAI에는 공개 공고와 공개 첨부문서만 전송하며 시민 프로필은 전송하지 않는다.
+- Configuration: API key는 `OPENAI_API_KEY`, OCR 모델은 `OPENAI_OCR_MODEL` 환경변수로 주입한다.
+- Reason: 텍스트 PDF의 불필요한 API 비용과 지연을 피하면서 스캔·혼합 PDF를 처리하기 위함이다.
+- Affected areas: backend
+- Contract impact: 공통 API schema 변경 없음

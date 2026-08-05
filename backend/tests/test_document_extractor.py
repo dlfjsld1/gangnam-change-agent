@@ -146,12 +146,18 @@ def test_pdf_extractor_reads_page_text() -> None:
         }
     )
     content = DecodedStreamObject()
-    content.set_data(b"BT /F1 12 Tf 72 720 Td (Eligibility age 19 to 34) Tj ET")
+    content.set_data(
+        b"BT /F1 12 Tf 72 720 Td "
+        b"(Eligibility applies to Gangnam residents age 19 to 34 with support.) "
+        b"Tj ET"
+    )
     page[NameObject("/Contents")] = writer._add_object(content)
     buffer = BytesIO()
     writer.write(buffer)
 
-    assert extract_pdf_text(buffer.getvalue()) == "Eligibility age 19 to 34"
+    assert extract_pdf_text(buffer.getvalue()) == (
+        "Eligibility applies to Gangnam residents age 19 to 34 with support."
+    )
 
 
 def test_attachment_downloader_rejects_unapproved_hosts_before_fetch() -> None:

@@ -8,7 +8,6 @@ from urllib.parse import urlparse
 from xml.etree import ElementTree
 from zipfile import BadZipFile, ZipFile
 
-from pypdf import PdfReader
 from scrapling.fetchers import Fetcher
 
 from app.schemas.document_extraction import (
@@ -17,6 +16,7 @@ from app.schemas.document_extraction import (
     NoticeDocumentCorpus,
 )
 from app.schemas.source_notice import SourceAttachment, SourceNotice
+from app.tools.pdf_extractor import extract_pdf_document
 
 
 MINIMUM_TEXT_LENGTH = 20
@@ -68,7 +68,7 @@ def extract_notice_corpus(
     extractors: Mapping[str, TextExtractor] | None = None,
 ) -> NoticeDocumentCorpus:
     active_extractors: dict[str, TextExtractor] = {
-        "pdf": extract_pdf_text,
+        "pdf": lambda content: extract_pdf_text(content, image_ocr=image_ocr),
         "hwpx": extract_hwpx_text,
     }
     if image_ocr is not None:
@@ -100,9 +100,12 @@ def extract_notice_corpus(
     )
 
 
-def extract_pdf_text(content: bytes) -> str:
-    reader = PdfReader(BytesIO(content))
-    return _clean_text("\n".join(page.extract_text() or "" for page in reader.pages))
+def extract_pdf_text(
+    content: bytes,
+    *,
+    image_ocr: TextExtractor | None = None,
+) -> str:
+    return extract_pdf_document(content, image_ocr=image_ocr).text
 
 
 def extract_hwpx_text(content: bytes) -> str:
