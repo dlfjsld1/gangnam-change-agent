@@ -50,7 +50,7 @@ export function App() {
   const [demoProfileName, setDemoProfileName] = useState<"A" | "B" | undefined>();
   const [demoProfile, setDemoProfile] = useState<LocalProfile>();
   const [selectedPolicy, setSelectedPolicy] = useState<PolicyPackage>();
-  const [onboardingMode, setOnboardingMode] = useState<"start" | "edit">();
+  const [onboardingMode, setOnboardingMode] = useState<"start" | "edit" | "preview">();
 
   useEffect(() => {
     void Promise.all([
@@ -134,7 +134,7 @@ export function App() {
           key={onboardingMode}
           mode={onboardingMode}
           onComplete={completeProfile}
-          onClose={onboardingMode === "edit" ? () => setOnboardingMode(undefined) : undefined}
+          onClose={onboardingMode !== "start" ? () => setOnboardingMode(undefined) : undefined}
           policy={policies[0] ?? fixturePolicies[0]}
         />
       ) : <>
@@ -142,6 +142,7 @@ export function App() {
         <ProfilePage
           fields={(policies[0] ?? fixturePolicies[0]).required_profile_fields}
           onEdit={() => setOnboardingMode("edit")}
+          onPreviewIntro={() => setOnboardingMode("preview")}
           profile={profile}
         />
       ) : <>
@@ -208,7 +209,12 @@ export function App() {
 }
 
 
-function ProfilePage(props: { fields: FieldDefinition[]; onEdit: () => void; profile: LocalProfile }) {
+function ProfilePage(props: {
+  fields: FieldDefinition[];
+  onEdit: () => void;
+  onPreviewIntro: () => void;
+  profile: LocalProfile;
+}) {
   const fields = props.fields.filter((field) => field.review_status === "approved");
 
   return (
@@ -228,6 +234,7 @@ function ProfilePage(props: { fields: FieldDefinition[]; onEdit: () => void; pro
         ))}
       </section>
       <button className="profile-edit-button" onClick={props.onEdit} type="button">정보 수정하기</button>
+      <button className="profile-intro-button" onClick={props.onPreviewIntro} type="button">서비스 소개 다시 보기</button>
     </section>
   );
 }
@@ -347,7 +354,7 @@ function PolicyDetail(props: { onClose: () => void; policy: PolicyPackage }) {
 
 interface OnboardingProps {
   initialProfile: LocalProfile;
-  mode: "start" | "edit";
+  mode: "start" | "edit" | "preview";
   onClose?: () => void;
   onComplete: (profile: LocalProfile) => Promise<void>;
   policy: PolicyPackage;
@@ -382,11 +389,25 @@ function Onboarding(props: OnboardingProps) {
   if (!started) {
     return (
       <section className="onboarding-screen onboarding-welcome">
-        <p className="onboarding-brand">강남 Change Agent</p>
-        <h1>나에게 맞는 공고를<br />찾아드릴게요</h1>
-        <p>입력한 정보는 이 기기에만 저장돼요.</p>
-        <div className="onboarding-privacy">중앙 서버에 개인 프로필을 모으지 않아 대규모 유출 위험을 줄입니다.</div>
-        <button className="onboarding-primary" onClick={() => setStarted(true)} type="button">시작하기</button>
+        <div className="onboarding-hero">
+          <p className="onboarding-brand">강남 Change Agent</p>
+          <h1>나에게 맞는 공고를<br />찾아드릴게요</h1>
+          <p>입력한 정보는 이 기기에만 저장돼요.</p>
+        </div>
+        <div className="onboarding-content">
+          <div className="onboarding-privacy">중앙 서버에 개인 프로필을 모으지 않아 대규모 유출 위험을 줄입니다.</div>
+          <ul className="onboarding-points">
+            <li>공고 조건은 이 기기 안에서만 비교해요.</li>
+            <li>필요한 정보만 물어봐요.</li>
+            <li>언제든 내 정보에서 수정할 수 있어요.</li>
+          </ul>
+          <button
+            className="onboarding-primary"
+            onClick={props.mode === "preview" ? props.onClose : () => setStarted(true)}
+            type="button"
+          >{props.mode === "preview" ? "소개 닫기" : "시작하기"}</button>
+          {props.mode !== "preview" && <p className="onboarding-time">1분이면 끝나요</p>}
+        </div>
       </section>
     );
   }

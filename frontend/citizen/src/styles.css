@@ -45,14 +45,20 @@ input:focus-visible {
 
 .onboarding-screen {
   min-height: 100vh;
-  padding: 32px 24px calc(32px + env(safe-area-inset-bottom));
 }
 
 .onboarding-welcome {
-  display: flex;
-  flex-direction: column;
+  background: #f8faff;
+}
+
+.onboarding-hero {
+  min-height: 43vh;
+  padding: 32px 24px 42px;
   color: #fff;
-  background: linear-gradient(145deg, #0b255a, #08265f 58%, #103b8a);
+  background:
+    radial-gradient(circle at 88% 10%, rgba(73, 137, 255, 0.28), transparent 30%),
+    linear-gradient(145deg, #0b255a, #08265f 58%, #103b8a);
+  border-radius: 0 0 34px 34px;
 }
 
 .onboarding-brand {
@@ -61,7 +67,7 @@ input:focus-visible {
   letter-spacing: -0.04em;
 }
 
-.onboarding-welcome h1,
+.onboarding-hero h1,
 .onboarding-form h1 {
   margin: 64px 0 14px;
   font-size: clamp(2.35rem, 10vw, 3.2rem);
@@ -69,20 +75,59 @@ input:focus-visible {
   letter-spacing: -0.08em;
 }
 
-.onboarding-welcome > p:not(.onboarding-brand) {
+.onboarding-hero > p:not(.onboarding-brand) {
   margin: 0;
   color: #d4e1fc;
   font-size: 1.05rem;
 }
 
 .onboarding-privacy {
-  margin-top: 40px;
-  padding: 18px;
+  padding: 18px 18px 18px 54px;
   color: #1765d7;
   line-height: 1.55;
   font-weight: 800;
   background: #edf4ff;
   border-radius: 18px;
+  position: relative;
+}
+
+.onboarding-privacy::before {
+  position: absolute;
+  top: 16px;
+  left: 18px;
+  content: "⌾";
+  font-size: 1.7rem;
+}
+
+.onboarding-content {
+  display: flex;
+  flex-direction: column;
+  min-height: 57vh;
+  padding: 28px 24px calc(32px + env(safe-area-inset-bottom));
+}
+
+.onboarding-points {
+  display: grid;
+  gap: 14px;
+  margin: 28px 0;
+  padding: 0;
+  color: #53617a;
+  font-size: 0.96rem;
+  line-height: 1.45;
+  list-style: none;
+}
+
+.onboarding-points li {
+  position: relative;
+  padding-left: 25px;
+}
+
+.onboarding-points li::before {
+  position: absolute;
+  left: 0;
+  content: "✓";
+  color: #2168e8;
+  font-weight: 900;
 }
 
 .onboarding-primary {
@@ -94,6 +139,12 @@ input:focus-visible {
   background: #2468df;
   border: 0;
   border-radius: 16px;
+}
+
+.onboarding-time {
+  margin: 13px 0 0;
+  color: #77839a;
+  text-align: center;
 }
 
 .onboarding-form {
@@ -220,6 +271,20 @@ input:focus-visible {
   background: #2468df;
   border: 0;
   border-radius: 16px;
+}
+
+.profile-intro-button {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  margin-top: 8px;
+  color: #667189;
+  font-size: 0.9rem;
+  font-weight: 700;
+  background: transparent;
+  border: 0;
+  text-decoration: underline;
+  text-underline-offset: 4px;
 }
 
 .hero {
