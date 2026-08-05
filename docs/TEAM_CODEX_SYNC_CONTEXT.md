@@ -194,6 +194,18 @@ Work log는 프로젝트 전체 기획을 공지하는 파일이 아니다.
 - Task에 명시되지 않은 Agent Backend 작업으로 범위를 확장하지 않는다.
 - Task 종료 후 장기 진행 상태는 담당별 Work log에서만 관리한다.
 
+## `docs/deployment/`
+
+담당 간 배포 경계, 실행 환경변수, build context, health check와 현재 준비 상태를
+기록한다. 백엔드 Dockerfile 또는 AWS 실행 환경을 다루는 관리자·통합 담당과
+그 Codex는 다음 순서로 읽는다.
+
+1. `AGENTS.md`
+2. `docs/deployment/BACKEND_CONTAINER_HANDOFF.md`
+3. `docs/DECISIONS.md`의 데이터베이스·보안 결정
+4. `docs/contracts/api.md`
+5. `docs/worklogs/admin-integration/WORKLOG.md`
+
 ---
 
 # 5. 코드와 Work log 매핑
@@ -579,6 +591,7 @@ docs/
 - Kubernetes, 복잡한 VPC, Terraform 등 MVP에 불필요한 인프라는 추가하지 않는다.
 - `.env.example`, CORS, API base URL, health check, HTTPS를 확인한다.
 - 네트워크 실패에 대비한 demo fixture와 화면 증빙을 유지한다.
+- 백엔드 컨테이너와 AWS 배포 전 `docs/deployment/BACKEND_CONTAINER_HANDOFF.md`를 읽고 현재 준비 상태와 미구현 항목을 구분한다.
 
 ## Git 협업 세부사항
 

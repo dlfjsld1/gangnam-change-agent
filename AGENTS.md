@@ -20,9 +20,14 @@ Use these sources for their assigned purpose:
 - `docs/contracts/`: shared API, JSON Schema, matching, and fixture contracts
 - `docs/worklogs/`: responsible area's current status, next actions, dependencies, and history
 - `docs/TEAM_CODEX_SYNC_CONTEXT.md`: detailed collaboration, implementation, validation, and deployment procedures
+- `docs/deployment/BACKEND_CONTAINER_HANDOFF.md`: required backend container and AWS handoff context for Admin·Integration work
 
 Do not treat `docs/archive/` as the current specification.
 If documents conflict, prefer accepted decisions and current contracts, then report and correct the stale document.
+
+Before creating or changing the backend Dockerfile, container runtime, or AWS backend
+deployment, read `docs/deployment/BACKEND_CONTAINER_HANDOFF.md` after this file and
+before the Admin·Integration Work log.
 
 ### Delegated Task exception
 
