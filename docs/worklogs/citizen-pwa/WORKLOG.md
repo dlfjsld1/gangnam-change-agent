@@ -3,18 +3,18 @@
 ## Current status
 
 - Current milestone: 설치 가능한 PWA 보일러플레이트
-- Working: manifest, service worker, 동적 프로필 타입, IndexedDB 저장 인터페이스, 확정된 판정 규칙 문서
-- In progress: required_profile_fields 기반 질문과 실제 매칭 화면 연결
-- Not implemented: 사용자 A/B 전환 UI, 질문 답변 UI, API adapter
-- Blockers: MVP 연산자 중 in, contains, exists와 OR 구현 필요
+- Working: manifest, service worker, 동적 프로필 타입, IndexedDB 저장, 재귀 판정 matcher, 질문 답변과 UNKNOWN/STALE 재판정
+- In progress: 승인 정책 API adapter와 fixture fallback 연결
+- Not implemented: 사용자 A/B 전환 UI, API adapter
+- Blockers: 없음
 
 ## Next actions
 
-- [ ] matcher에 `in`, `contains`, `exists`, 재귀 `AND/OR`를 구현하고 판정 우선순위 테스트를 추가한다.
-- [ ] `unknown-question-smoke.json`을 matcher와 질문 선택 흐름에 연결한다.
-- [ ] `required_profile_fields`를 DynamicQuestion 입력과 연결한다.
-- [ ] 답변을 IndexedDB에 저장하고 저장 직후 정책을 다시 판정한다.
-- [ ] `stale-refresh-smoke.json`을 연결해 STALE 갱신 질문을 UNKNOWN 신규 질문보다 먼저 표시한다.
+- [x] matcher에 `in`, `contains`, `exists`, 재귀 `AND/OR`를 구현하고 판정 우선순위 테스트를 추가한다.
+- [x] `unknown-question-smoke.json`을 matcher와 질문 선택 흐름에 연결한다.
+- [x] `required_profile_fields`를 DynamicQuestion 입력과 연결한다.
+- [x] 답변을 IndexedDB에 저장하고 저장 직후 정책을 다시 판정한다.
+- [x] `stale-refresh-smoke.json`을 연결해 STALE 갱신 질문을 UNKNOWN 신규 질문보다 먼저 표시한다.
 - [ ] 승인된 정책 패키지만 읽는 API adapter와 fixture fallback을 연결한다.
 - [ ] 사용자 A/B 프로필 전환과 결과·해야 할 일 화면을 완성한다.
 
@@ -56,3 +56,47 @@ matcher 연산자 완성부터 질문·IndexedDB·재판정·API 연결까지의
 
 - 현재 추가 모듈의 프론트 단위 테스트 없음
 - 이전 PWA production build 확인됨
+
+### 2026-08-05 — 재귀 판정 matcher 완성
+
+#### Summary
+
+`equals`, `in`, `between`, `contains`, `exists`와 재귀 `AND/OR`를 구현하고, 계약의 AND/OR 우선순위를 검증하는 Node 내장 테스트를 추가했다.
+
+#### Tests
+
+- `npm.cmd test`: 4 passed
+- `npm.cmd run build`: passed
+
+### 2026-08-05 — UNKNOWN 질문 선택 연결
+
+#### Summary
+
+판정 결과가 `UNKNOWN`이면 승인된 required profile field 중 규칙에 필요한 첫 미입력 필드를 질문으로 선택하도록 연결했다.
+
+#### Tests
+
+- `npm.cmd test`: 5 passed
+- `npm.cmd run build`: passed
+
+### 2026-08-05 — 질문 답변과 로컬 재판정 연결
+
+#### Summary
+
+fixture 정책의 승인된 required profile field를 DynamicQuestion 입력으로 표시하고, 답변을 IndexedDB에 저장한 뒤 즉시 로컬에서 다시 판정하도록 연결했다.
+
+#### Tests
+
+- `npm.cmd test`: 6 passed
+- `npm.cmd run build`: passed
+
+### 2026-08-05 — STALE 갱신 질문 우선순위 연결
+
+#### Summary
+
+만료된 답변이 있으면 신규 미입력 필드보다 먼저 갱신 질문을 선택하고, 화면에서 갱신 이유를 안내하도록 연결했다.
+
+#### Tests
+
+- `npm.cmd test`: 7 passed
+- `npm.cmd run build`: passed
