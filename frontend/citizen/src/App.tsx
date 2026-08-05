@@ -48,6 +48,7 @@ export function App() {
   const [demoProfileName, setDemoProfileName] = useState<"A" | "B" | undefined>();
   const [demoProfile, setDemoProfile] = useState<LocalProfile>();
   const [selectedPolicy, setSelectedPolicy] = useState<PolicyPackage>();
+  const [onboardingMode, setOnboardingMode] = useState<"start" | "edit">();
 
   useEffect(() => {
     void Promise.all([
@@ -63,6 +64,9 @@ export function App() {
         setHiddenPolicyIds(savedHiddenPolicyIds);
         setPolicies(policyResult.policies);
         setPolicySource(policyResult.source);
+        if (Object.keys(savedProfile).length === 0) {
+          setOnboardingMode("start");
+        }
       })
       .finally(() => setReady(true));
   }, []);
@@ -98,8 +102,24 @@ export function App() {
     setHiddenPolicyIds([]);
   }
 
+  async function completeProfile(nextProfile: LocalProfile) {
+    await saveProfile(nextProfile);
+    setProfile(nextProfile);
+    setOnboardingMode(undefined);
+  }
+
   return (
     <main className="app-shell">
+      {onboardingMode ? (
+        <Onboarding
+          initialProfile={onboardingMode === "edit" ? profile : {}}
+          key={onboardingMode}
+          mode={onboardingMode}
+          onComplete={completeProfile}
+          onClose={onboardingMode === "edit" ? () => setOnboardingMode(undefined) : undefined}
+          policy={policies[0] ?? fixturePolicies[0]}
+        />
+      ) : <>
       <header className="hero">
         <div className="hero-topline">
           <p>강남 Change Agent</p>
@@ -148,9 +168,10 @@ export function App() {
       <nav aria-label="주요 메뉴" className="bottom-nav">
         <button aria-current={activeTab === "home" ? "page" : undefined} onClick={() => setActiveTab("home")} type="button">⌂<span>홈</span></button>
         <button aria-current={activeTab === "changes" ? "page" : undefined} onClick={() => setActiveTab("changes")} type="button">▤<span>전체 변경</span></button>
-        <button aria-current={activeTab === "profile" ? "page" : undefined} onClick={() => setActiveTab("profile")} type="button">♙<span>내 정보</span></button>
+        <button aria-current={activeTab === "profile" ? "page" : undefined} onClick={() => { setActiveTab("profile"); setOnboardingMode("edit"); }} type="button">♙<span>내 정보</span></button>
       </nav>
       {selectedPolicy && <PolicyDetail policy={selectedPolicy} onClose={() => setSelectedPolicy(undefined)} />}
+      </>}
     </main>
   );
 }
@@ -253,6 +274,66 @@ function PolicyDetail(props: { onClose: () => void; policy: PolicyPackage }) {
         </section>
       </section>
     </div>
+  );
+}
+
+
+interface OnboardingProps {
+  initialProfile: LocalProfile;
+  mode: "start" | "edit";
+  onClose?: () => void;
+  onComplete: (profile: LocalProfile) => Promise<void>;
+  policy: PolicyPackage;
+}
+
+function Onboarding(props: OnboardingProps) {
+  const fields = props.policy.required_profile_fields.filter((field) => field.review_status === "approved");
+  const [started, setStarted] = useState(props.mode === "edit");
+  const [draft, setDraft] = useState(props.initialProfile);
+  const [fieldIndex, setFieldIndex] = useState(0);
+  const [isSaving, setIsSaving] = useState(false);
+  const field = fields[fieldIndex];
+
+  async function answer(value: unknown) {
+    if (!field) {
+      return;
+    }
+    const nextDraft = recordAnswer(draft, field, value, today());
+    setDraft(nextDraft);
+    if (fieldIndex < fields.length - 1) {
+      setFieldIndex((current) => current + 1);
+      return;
+    }
+    setIsSaving(true);
+    try {
+      await props.onComplete(nextDraft);
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  if (!started) {
+    return (
+      <section className="onboarding-screen onboarding-welcome">
+        <p className="onboarding-brand">강남 Change Agent</p>
+        <h1>나에게 맞는 공고를<br />찾아드릴게요</h1>
+        <p>입력한 정보는 이 기기에만 저장돼요.</p>
+        <div className="onboarding-privacy">⌾ 서버로 전송하지 않아요</div>
+        <button className="onboarding-primary" onClick={() => setStarted(true)} type="button">시작하기</button>
+      </section>
+    );
+  }
+
+  return (
+    <section className="onboarding-screen onboarding-form">
+      <div className="onboarding-topline">
+        <p>{props.mode === "edit" ? "내 정보 수정" : `정보 설정 ${fieldIndex + 1}/${fields.length}`}</p>
+        {props.onClose && <button onClick={props.onClose} type="button">닫기</button>}
+      </div>
+      <h1>{props.mode === "edit" ? "필요한 정보를 다시 확인해요" : "공고 확인에 필요한 정보예요"}</h1>
+      <p className="onboarding-description">답변은 이 기기 안에만 저장되고, 언제든 수정할 수 있어요.</p>
+      {field && <DynamicQuestion field={field} onAnswer={answer} pending={isSaving} reason="unknown" />}
+    </section>
   );
 }
 

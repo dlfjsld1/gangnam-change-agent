@@ -2,8 +2,8 @@
 
 ## Current status
 
-- Current milestone: 카드형 시민 PWA 홈 프로토타입
-- Working: manifest, service worker, 동적 프로필 타입, IndexedDB 저장, 재귀 판정 matcher, 질문 답변과 UNKNOWN/STALE 재판정, 카드 피드와 로컬 숨기기, 승인 정책 API fallback
+- Current milestone: 온보딩부터 정책 상세까지 이어지는 시민 PWA 데모
+- Working: manifest, service worker, 동적 프로필 타입, IndexedDB 저장, 재귀 판정 matcher, 온보딩·질문 답변과 UNKNOWN/STALE 재판정, 카드 피드와 로컬 숨기기, 승인 정책 API fallback
 - In progress: 홈 화면 피드백 반영과 실제 통합 smoke check
 - Not implemented: 없음
 - Blockers: 없음
@@ -20,6 +20,7 @@
 - [x] 사용자 A/B 프로필 전환과 결과·해야 할 일 화면을 완성한다.
 - [x] 정책 변경·마감일·해야 할 일·근거를 보여주는 카드 상세 화면을 구현한다.
 - [x] 정책 카드를 세로 스냅 피드로 표시한다.
+- [x] 첫 실행 온보딩과 정책 기반 내 정보 설정 화면을 구현한다.
 
 ## Completion criteria
 
@@ -167,4 +168,15 @@ fixture 정책의 승인된 required profile field를 DynamicQuestion 입력으�
 
 #### Tests
 
+- `npm.cmd run build`: passed
+
+### 2026-08-05 — 온보딩과 내 정보 설정
+
+#### Summary
+
+첫 실행에서 개인정보 로컬 저장 원칙을 안내하고, 승인 정책의 required profile field를 순서대로 입력한 뒤 홈 피드로 이동하도록 연결했다. 하단 내 정보 탭에서 다시 수정할 수도 있다.
+
+#### Tests
+
+- `npm.cmd test`: 8 passed
 - `npm.cmd run build`: passed
