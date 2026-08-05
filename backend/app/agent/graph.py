@@ -7,6 +7,7 @@ from app.schemas.agent_run import AgentNodeLog, AgentRun
 from app.services.document_analysis import analyze_notice_documents
 from app.services.field_registry import FieldRegistry
 from app.services.policy_builder import build_policy_package
+from app.services.policy_diff import apply_policy_diff
 from app.tools.document_extractor import ScraplingAttachmentDownloader
 from app.tools.openai_ocr import OpenAIImageOcr
 from app.tools.openai_policy_extractor import OpenAIPolicyExtractor
@@ -17,6 +18,7 @@ FETCH_NOTICE = "fetch_notice"
 ANALYZE_DOCUMENTS = "analyze_documents"
 EXTRACT_POLICY = "extract_policy"
 BUILD_POLICY = "build_policy"
+COMPARE_POLICY = "compare_policy"
 AWAIT_REVIEW = "await_review"
 COMPLETE = "complete"
 FAIL = "fail"
@@ -40,6 +42,7 @@ def build_change_agent_graph(runtime: ChangeAgentRuntime):
     graph.add_node(ANALYZE_DOCUMENTS, _analyze_documents_node(runtime))
     graph.add_node(EXTRACT_POLICY, _extract_policy_node(runtime))
     graph.add_node(BUILD_POLICY, _build_policy_node(runtime))
+    graph.add_node(COMPARE_POLICY, _compare_policy_node)
     graph.add_node(AWAIT_REVIEW, _await_review_node)
     graph.add_node(COMPLETE, _complete_node)
     graph.add_node(FAIL, _fail_node)
@@ -48,8 +51,9 @@ def build_change_agent_graph(runtime: ChangeAgentRuntime):
     _add_failure_route(graph, FETCH_NOTICE, ANALYZE_DOCUMENTS)
     _add_failure_route(graph, ANALYZE_DOCUMENTS, EXTRACT_POLICY)
     _add_failure_route(graph, EXTRACT_POLICY, BUILD_POLICY)
+    _add_failure_route(graph, BUILD_POLICY, COMPARE_POLICY)
     graph.add_conditional_edges(
-        BUILD_POLICY,
+        COMPARE_POLICY,
         _route_after_build,
         {FAIL: FAIL, AWAIT_REVIEW: AWAIT_REVIEW, COMPLETE: COMPLETE},
     )
@@ -198,6 +202,32 @@ def _route_after_build(state: ChangeAgentState) -> str:
     if state.get("review_required", False):
         return AWAIT_REVIEW
     return COMPLETE
+
+
+def _compare_policy_node(state: ChangeAgentState) -> dict[str, object]:
+    try:
+        current = state["policy_package"]
+        if current is None:
+            raise ValueError("Policy package was not created")
+        package = apply_policy_diff(state.get("previous_policy_package"), current)
+    except Exception as error:
+        return _failure(COMPARE_POLICY, error)
+    message = (
+        f"이전 정책과 비교해 변경 {len(package['changes'])}건을 생성했습니다."
+        if state.get("previous_policy_package") is not None
+        else "비교할 이전 정책이 없어 최초 버전으로 유지했습니다."
+    )
+    return {
+        "policy_package": package,
+        "node_logs": [
+            _started(COMPARE_POLICY, "이전 정책과 신규 정책 비교를 시작했습니다."),
+            AgentNodeLog(
+                node=COMPARE_POLICY,
+                status="completed",
+                message=message,
+            ),
+        ],
+    }
 
 
 def _await_review_node(state: ChangeAgentState) -> dict[str, object]:

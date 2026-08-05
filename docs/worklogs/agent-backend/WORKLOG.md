@@ -2,10 +2,10 @@
 
 ## Current status
 
-- Current milestone: 이전 공고 비교
+- Current milestone: 실제 Agent 실행 API
 - Working: health API, 승인 정책 fixture API, 공통 계약, 공식 게시판 수집, HTML·PDF·HWPX 추출, 최후 복구용 OpenAI 이미지 OCR adapter, 동일 문서 변형 교차 검증, 구조화 정책 후보와 PolicyPackage 조립, LangGraph 실행 흐름과 AgentRun 로그 누적
-- In progress: 이전 공고와 신규 공고의 정책 변경 diff 생성
-- Not implemented: 이전 공고 diff, 실제 Agent 실행 API, DB 저장, 관리자 승인 Publish
+- In progress: LangGraph를 호출하는 실제 Agent 실행 API
+- Not implemented: 실제 Agent 실행 API, DB 저장, 관리자 승인 Publish
 - Blockers: none
 
 ## Next actions
@@ -20,7 +20,7 @@
 - [x] 기존 FieldDefinition 재사용 또는 FieldDefinitionProposal 생성을 연결한다.
 - [x] 문서 추출·근거 비교 로그와 review_required 사유를 AgentRun에 기록한다.
 - [x] LangGraph 전체 노드·도구 실행 로그를 AgentRun에 누적한다.
-- [ ] 같은 정책 계열의 이전 공고와 신규 공고를 비교해 구조화된 diff를 생성한다.
+- [x] 같은 정책 계열의 이전 공고와 신규 공고를 비교해 구조화된 diff를 생성한다.
 - [ ] LangGraph를 호출하고 결과를 반환하는 실제 Agent 실행 API를 추가한다.
 - [ ] 실행·정책 후보·검토 상태를 저장소 인터페이스 뒤에 영속화한다.
 
@@ -46,6 +46,24 @@
 - docs/contracts/field-definition-proposal.schema.json
 
 ## Change history
+
+### 2026-08-05 — 이전 정책 비교와 변경 diff 생성
+
+#### Summary
+
+명시적으로 선택된 이전 PolicyPackage와 신규 후보의 재귀 EligibilityRule, 시행일, 마감일, 필요한 행동을 비교해 `changes`를 생성한다. 이전 정책의 family와 version을 이어받고, 조건 확대·축소·추가·제거를 구분해 LangGraph의 검토 분기 전에 실행한다.
+
+#### Contract impact
+
+기존 PolicyPackage `changes` 구조를 그대로 사용하며 공통 schema는 변경하지 않았다. 이전 정책 계열 선택과 조회는 향후 저장소/API 단계의 책임으로 남긴다.
+
+#### Validation
+
+- ruff check: passed
+- ruff format --check: passed
+- pytest: 42 passed
+- PolicyPackage JSON Schema validation: 조건 확대·날짜·행동 변경 경로 passed
+- 재귀 AND/OR diff: 추가·제거·확대 경로 passed
 
 ### 2026-08-05 — LangGraph 실행 흐름 연결
 

@@ -46,6 +46,7 @@ class ChangeAgentState(TypedDict, total=False):
     review_required: bool
     review_reason: str | None
     unresolved_fields: list[str]
+    previous_policy_package: dict[str, object] | None
     policy_package: dict[str, object] | None
     agent_run: AgentRun
     node_logs: Annotated[list[AgentNodeLog], add]

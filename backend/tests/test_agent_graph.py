@@ -164,9 +164,11 @@ def test_graph_runs_collection_to_completed_policy_package() -> None:
         "extract_policy",
         "build_policy",
     ]
-    assert result["policy_package"] == _policy_package()
+    assert result["policy_package"]["policy_id"] == _policy_package()["policy_id"]
+    assert result["policy_package"]["changes"] == []
     assert result["agent_run"].status == "completed"
     assert result["agent_run"].node_logs[-1].node == "complete"
+    assert any(log.node == "compare_policy" for log in result["agent_run"].node_logs)
     _validate_agent_run(result["agent_run"])
 
 
@@ -183,6 +185,26 @@ def test_graph_routes_review_required_result_without_publishing() -> None:
     assert result["agent_run"].unresolved_fields == ["new_field"]
     assert result["agent_run"].node_logs[-1].node == "await_review"
     _validate_agent_run(result["agent_run"])
+
+
+def test_graph_applies_explicit_previous_policy_identity() -> None:
+    calls: list[str] = []
+    graph = build_change_agent_graph(_runtime(calls))
+
+    result = graph.invoke(
+        {
+            "run_id": "run-graph",
+            "notice_url": "https://example.test/notice",
+            "previous_policy_package": {
+                "policy_family_id": "youth-support",
+                "version": 4,
+            },
+        }
+    )
+
+    assert result["policy_package"]["policy_family_id"] == "youth-support"
+    assert result["policy_package"]["version"] == 5
+    assert result["policy_package"]["policy_id"] == "youth-support-v5"
 
 
 def test_graph_records_failure_and_stops_following_nodes() -> None:
