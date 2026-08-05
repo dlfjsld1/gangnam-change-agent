@@ -148,6 +148,7 @@ input:focus-visible {
 }
 
 .onboarding-form {
+  padding: 32px 28px calc(40px + env(safe-area-inset-bottom));
   color: #101c39;
   background: #f8faff;
 }
@@ -271,6 +272,18 @@ input:focus-visible {
   background: #2468df;
   border: 0;
   border-radius: 16px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .profile-intro-button {
@@ -542,6 +555,29 @@ input:focus-visible {
   color: #15203a;
   background: #fff;
   border: 1px solid #cbd5e5;
+}
+
+.residence-question .answer-input {
+  width: min(100%, 236px);
+}
+
+.residence-question .answer-input[aria-invalid="true"] {
+  border-color: #cb5858;
+}
+
+.input-help,
+.input-error {
+  margin: 10px 0 0 !important;
+  font-size: 0.82rem !important;
+}
+
+.input-help {
+  color: #68748a !important;
+}
+
+.input-error {
+  color: #b34141 !important;
+  font-weight: 800;
 }
 
 .detail-button {

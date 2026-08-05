@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { type FormEvent, useState } from "react";
 
 import type { FieldDefinition } from "../profile/dynamicProfile";
 
@@ -13,9 +13,58 @@ interface DynamicQuestionProps {
 
 export function DynamicQuestion(props: DynamicQuestionProps) {
   const [input, setInput] = useState("");
+  const [residenceError, setResidenceError] = useState("");
 
   function submitAnswer(value: unknown) {
     props.onAnswer(value);
+  }
+
+  function submitResidence(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const dongName = input.replace(/\s/g, "").replace(/^강남구/, "");
+    const gangnamDongs = [
+      "개포동", "논현동", "대치동", "도곡동", "삼성동", "세곡동", "수서동",
+      "신사동", "압구정동", "역삼동", "일원동", "청담동", "율현동", "자곡동",
+    ];
+
+    if (!gangnamDongs.includes(dongName)) {
+      setResidenceError("강남구에 속한 동을 입력해 주세요. 예: 역삼동");
+      return;
+    }
+
+    setResidenceError("");
+    submitAnswer("강남구");
+  }
+
+  if (props.field.key === "residence") {
+    return (
+      <section className="question-card residence-question">
+        <h2>살고 있는 동을 선택하세요</h2>
+        <p>강남구 어느 동에 거주하시나요?</p>
+        <form onSubmit={submitResidence} noValidate>
+          <label className="sr-only" htmlFor="residence-dong">살고 있는 동</label>
+          <input
+            aria-describedby="residence-help residence-error"
+            aria-invalid={Boolean(residenceError)}
+            className="answer-input"
+            id="residence-dong"
+            onChange={(event) => {
+              setInput(event.target.value);
+              if (residenceError) {
+                setResidenceError("");
+              }
+            }}
+            placeholder="예: 역삼동"
+            required
+            type="text"
+            value={input}
+          />
+          <button className="answer-button" disabled={props.pending} type="submit">확인</button>
+          <p className="input-help" id="residence-help">강남구에 속한 동만 입력할 수 있어요.</p>
+          {residenceError && <p aria-live="polite" className="input-error" id="residence-error">{residenceError}</p>}
+        </form>
+      </section>
+    );
   }
 
   if (props.field.data_type === "enum" && props.field.allowed_values) {
@@ -70,7 +119,7 @@ export function DynamicQuestion(props: DynamicQuestionProps) {
           onChange={(event) => setInput(event.target.value)}
           className="answer-input"
           required
-          type={props.field.data_type === "number" ? "number" : props.field.data_type}
+          type={props.field.data_type === "number" ? "number" : "text"}
           value={input}
         />
         <button className="answer-button" disabled={props.pending} type="submit">답변 저장</button>
