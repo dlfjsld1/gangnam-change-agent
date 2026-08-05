@@ -29,6 +29,18 @@ export async function loadAdminData(): Promise<{
   }
 }
 
+export async function discoverNewNotices(): Promise<{
+  discovered_count: number;
+  already_processed_count: number;
+  processed_runs: AgentRun[];
+}> {
+  return request("/api/notice-discovery-runs", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ max_new_notices: 1 }),
+  });
+}
+
 export async function submitReview(
   reviewId: string,
   action: ReviewStatus | "edit",

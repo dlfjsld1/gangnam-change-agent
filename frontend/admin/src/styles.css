@@ -35,6 +35,9 @@ button { cursor: pointer; }
 .hero h1 { margin: 5px 0 8px; font-size: clamp(2rem, 5vw, 3.4rem); letter-spacing: -0.06em; }
 .hero p { margin: 0; color: #5d665f; }
 .hero .environment { margin-top: 10px; }
+.hero-actions { display: flex; align-items: center; gap: 10px; }
+.discover-button { padding: 10px 15px; border: 1px solid #13795b; border-radius: 9px; color: #fff; background: #13795b; font-weight: 700; }
+.discover-button:disabled { cursor: wait; opacity: 0.65; }
 .admin-page .eyebrow { margin: 0; font-size: 0.75rem; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; }
 .source, .status { border-radius: 999px; padding: 7px 11px; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.08em; }
 .source.api, .status.approved { color: #086343; background: #d9f5e7; }
@@ -88,6 +91,7 @@ input { width: 100%; padding: 11px 12px; border: 1px solid #d8ded8; border-radiu
 @media (max-width: 760px) {
   .admin-page { padding: 28px 14px 50px; }
   .hero { flex-direction: column; }
+  .hero-actions { width: 100%; justify-content: space-between; }
   .summary-grid { grid-template-columns: 1fr 1fr; }
   .workspace { grid-template-columns: 1fr; }
   aside { border-right: 0; border-bottom: 1px solid #e6e9e4; }
