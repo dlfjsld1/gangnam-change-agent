@@ -24,6 +24,7 @@ export type PolicyPackage = {
   }>;
   evidence: Array<{
     evidence_id: string;
+    source_type: string;
     document_name: string;
     location: string;
     quote: string;

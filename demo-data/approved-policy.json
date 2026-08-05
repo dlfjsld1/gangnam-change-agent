@@ -89,11 +89,19 @@
   "evidence": [
     {
       "evidence_id": "evidence-1",
-      "source_type": "DEMO",
-      "document_name": "demo-notice.json",
+      "source_type": "HTML",
+      "document_name": "강남구 청년 지원사업 공고 (MOCK)",
       "location": "지원 대상 항목",
       "quote": "지원 대상: 만 19세 이상 39세 이하",
-      "source_url": "https://example.com/demo-policy"
+      "source_url": "https://www.gangnam.go.kr/notice/view.do?not_ancmt_mgt_no=MOCK-2026-001"
+    },
+    {
+      "evidence_id": "evidence-attachment-mock",
+      "source_type": "PDF",
+      "document_name": "청년-지원사업-공고문-MOCK.pdf",
+      "location": "지원 대상 2쪽",
+      "quote": "지원 대상: 만 19세 이상 39세 이하",
+      "source_url": "https://mock-files.example.com/public-attachments/demo-policy/notice.pdf"
     }
   ],
   "review": {
