@@ -3,8 +3,8 @@
 ## Current status
 
 - Current milestone: 온보딩부터 정책 상세까지 이어지는 시민 PWA 데모
-- Working: manifest, service worker, 동적 프로필 타입, IndexedDB 저장, 재귀 판정 matcher, 온보딩·질문 답변과 UNKNOWN/STALE 재판정, 카드 피드와 로컬 숨기기, 승인 정책 API fallback
-- In progress: 홈 화면 피드백 반영과 실제 통합 smoke check
+- Working: manifest, service worker, 동적 프로필 타입, IndexedDB 저장, 재귀 판정 matcher, 온보딩·질문 답변과 UNKNOWN/STALE 재판정, 카드 피드와 로컬 숨기기, 승인 정책 API fallback, 입력 정보 요약과 선택 관심 분야 저장
+- In progress: 홈 화면 피드백 반영과 관심 분야를 여러 공고 정렬에 연결할 시점 검토
 - Not implemented: 없음
 - Blockers: 없음
 
@@ -25,6 +25,10 @@
 - [x] 공고 즐겨찾기 저장과 즐겨찾기 탭을 구현한다.
 - [x] 첫 실행 인트로를 개인정보 원칙 중심으로 정리하고 다시 보기 경로를 제공한다.
 - [x] 시민 기기의 프로필·즐겨찾기·숨김 상태를 삭제하고 인트로로 돌아가는 경로를 제공한다.
+- [x] 필수 정보 입력 뒤 요약 확인과 선택 관심 분야 입력 흐름을 제공한다.
+- [x] 대상이 아닌 `NO` 정책 카드를 홈과 즐겨찾기에서 숨긴다.
+- [x] 정책 상세에서 evidence의 원문 공고 URL로 이동하는 버튼을 제공한다.
+- [x] 공고 카드의 정보 간격과 강조 단계를 정리하고 YES 상태 문구의 체크 기호를 제거한다.
 
 ## Completion criteria
 
@@ -47,6 +51,66 @@
 - docs/contracts/field-definition.schema.json
 
 ## Change history
+
+### 2026-08-05 공고 카드 가독성 정리
+
+#### Summary
+
+공고 카드의 상태·분야·제목·변경값·설명·해야 할 일·상세 버튼 사이 여백과 글자 크기를 고르게 다듬었다. `대상 가능성 높음` 상태의 체크 기호를 제거해 상태 배지가 더 차분하게 보이도록 했다.
+
+#### Tests
+
+- 브라우저 확인: 사용자 C 카드에서 정리된 간격과 상태 배지 확인
+- `npm.cmd run build`: passed
+
+### 2026-08-05 원문 공고 이동 버튼
+
+#### Summary
+
+정책 상세 화면의 변경 근거 아래에 원문 공고를 여는 카드형 링크 버튼을 추가했다. 정책 JSON의 첫 evidence `source_url`을 새 탭으로 열며, 현재 API에 첨부파일 목록이 없으므로 첨부파일은 원문 공고 페이지에서 확인하도록 안내한다.
+
+#### Tests
+
+- 브라우저 확인: 사용자 C의 정책 상세에서 원문 공고 링크 렌더링과 `source_url` 확인
+- `npm.cmd run build`: passed
+
+### 2026-08-05 대상 아닌 공고 숨김
+
+#### Summary
+
+로컬 결정론적 판정이 `NO`인 정책은 홈과 즐겨찾기 목록에서 제외했다. 아직 정보가 부족한 `UNKNOWN`과 갱신이 필요한 `STALE` 정책은 질문을 계속 보여주며, 대상이 아닌 정책만 빈 안내 화면으로 처리한다.
+
+#### Tests
+
+- 브라우저 확인: 사용자 B(강남구 외 거주) 선택 시 카드 0개와 빈 안내 표시
+- `npm.cmd test`: 8 passed
+- `npm.cmd run build`: passed
+
+### 2026-08-05 인트로 요약과 선택 관심 분야
+
+#### Summary
+
+필수 정책 질문을 모두 입력한 뒤 저장될 정보를 요약해서 보여주고, 선택적으로 관심 분야 여섯 가지를 고를 수 있게 했다. 관심 분야는 다른 프로필 값과 같이 이 기기 IndexedDB에만 저장하며, 현재 정책의 대상 판정에는 사용하지 않는다.
+
+#### Tests
+
+- 브라우저 확인: 기본 4개 입력 → 요약 → 관심 분야 선택 → 홈 이동 → 내 정보에서 선택값 표시
+- `npm.cmd test`: 8 passed
+- `npm.cmd run build`: passed
+
+### 2026-08-05 실제 승인 정책 API 연동 확인
+
+#### Summary
+
+로컬 FastAPI의 `/health`와 승인 정책 조회 API를 확인하고, 시민 PWA가 fixture 안내 없이 API에서 받은 승인 정책 카드를 표시하는 것을 확인했다. 시민 프로필과 시민별 판정 결과는 API 요청에 포함하지 않았다.
+
+#### Tests
+
+- `GET http://localhost:8000/health`: `{"status":"ok"}` 확인
+- `GET http://localhost:8000/api/policy-packages`: 승인 정책 배열 1건 확인
+- 브라우저 확인: 사용자 A 선택 후 API 정책 카드 표시, fixture 안내 미표시
+- `npm.cmd test`: 8 passed
+- `npm.cmd run build`: passed
 
 ### 2026-08-05 탭 전환 부드럽게 연결
 

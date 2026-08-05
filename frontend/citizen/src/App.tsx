@@ -29,6 +29,22 @@ import userB from "../../../demo-data/user-b.json";
 
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 const fixturePolicies = [policyFixture as PolicyPackage];
+const interestField = {
+  key: "interest_categories",
+  label: "관심 분야",
+  data_type: "list",
+  allowed_values: [
+    { value: "youth_jobs", label: "청년 · 일자리" },
+    { value: "housing_living", label: "주거 · 생활 지원" },
+    { value: "welfare_care", label: "복지 · 돌봄" },
+    { value: "culture_sports", label: "문화 · 체육" },
+    { value: "transport_facilities", label: "교통 · 시설" },
+    { value: "education_family", label: "교육 · 가족" },
+  ],
+  question: "관심 있는 분야를 골라 주세요.",
+  sensitivity: "low",
+  review_status: "approved",
+} satisfies FieldDefinition;
 const demoProfiles = {
   A: toLocalProfile(userA.profile),
   B: toLocalProfile(userB.profile),
@@ -93,14 +109,18 @@ export function App() {
       .finally(() => setReady(true));
   }, []);
 
-  const visiblePolicies = useMemo(
+  const activeProfile = demoProfile ?? profile;
+  const availablePolicies = useMemo(
     () => policies.filter((policy) => !hiddenPolicyIds.includes(policy.policy_id)),
     [hiddenPolicyIds, policies],
+  );
+  const visiblePolicies = useMemo(
+    () => availablePolicies.filter((policy) => evaluateRule(policy.eligibility_rule, activeProfile, today()) !== "NO"),
+    [activeProfile, availablePolicies],
   );
   const feedPolicies = activeTab === "favorites"
     ? visiblePolicies.filter((policy) => favoritePolicyIds.includes(policy.policy_id))
     : visiblePolicies;
-  const activeProfile = demoProfile ?? profile;
 
   async function saveAnswer(field: FieldDefinition, value: unknown) {
     setIsSaving(true);
@@ -236,11 +256,14 @@ export function App() {
           />
         ))}
 
-        {ready && activeTab === "home" && policies.length > 0 && visiblePolicies.length === 0 && (
+        {ready && activeTab === "home" && policies.length > 0 && availablePolicies.length === 0 && (
           <section className="empty-feed">
             <p>숨긴 변화가 있어요.</p>
             <button onClick={restorePolicies} type="button">숨긴 카드 다시 보기</button>
           </section>
+        )}
+        {ready && activeTab === "home" && availablePolicies.length > 0 && visiblePolicies.length === 0 && (
+          <section className="empty-feed"><p>지금 내 정보와 맞는 공고가 없어요.</p><p>새로운 공고가 올라오면 다시 알려드릴게요.</p></section>
         )}
         {ready && activeTab === "favorites" && feedPolicies.length === 0 && (
           <section className="empty-feed"><p>아직 즐겨찾기한 공고가 없어요.</p><p>홈에서 별을 눌러 담아보세요.</p></section>
@@ -311,7 +334,7 @@ function ProfilePage(props: {
   onReset: () => Promise<void>;
   profile: LocalProfile;
 }) {
-  const fields = props.fields.filter((field) => field.review_status === "approved");
+  const fields = [...props.fields.filter((field) => field.review_status === "approved"), interestField];
 
   return (
     <section className="profile-page tab-page" aria-labelledby="profile-title">
@@ -443,6 +466,13 @@ function PolicyDetail(props: { onClose: () => void; policy: PolicyPackage }) {
             </blockquote>
           ))}
         </section>
+        {props.policy.evidence[0]?.source_url && (
+          <a className="source-link-button" href={props.policy.evidence[0].source_url} rel="noreferrer" target="_blank">
+            <span className="source-link-icon" aria-hidden="true">↗</span>
+            <span><strong>원문 공고 보기</strong><small>강남구 원문과 첨부파일을 확인할 수 있어요</small></span>
+            <span aria-hidden="true" className="source-link-arrow">›</span>
+          </a>
+        )}
       </section>
     </div>
   );
@@ -462,8 +492,22 @@ function Onboarding(props: OnboardingProps) {
   const [started, setStarted] = useState(props.mode === "edit");
   const [draft, setDraft] = useState(props.initialProfile);
   const [fieldIndex, setFieldIndex] = useState(0);
+  const [step, setStep] = useState<"questions" | "summary" | "interests">("questions");
+  const [selectedInterests, setSelectedInterests] = useState<string[]>(() => {
+    const savedValue = props.initialProfile[interestField.key]?.value;
+    return Array.isArray(savedValue) ? savedValue.filter((value): value is string => typeof value === "string") : [];
+  });
   const [isSaving, setIsSaving] = useState(false);
   const field = fields[fieldIndex];
+
+  async function complete(profile: LocalProfile) {
+    setIsSaving(true);
+    try {
+      await props.onComplete(profile);
+    } finally {
+      setIsSaving(false);
+    }
+  }
 
   async function answer(value: unknown) {
     if (!field) {
@@ -475,12 +519,25 @@ function Onboarding(props: OnboardingProps) {
       setFieldIndex((current) => current + 1);
       return;
     }
-    setIsSaving(true);
-    try {
-      await props.onComplete(nextDraft);
-    } finally {
-      setIsSaving(false);
+    if (props.mode === "start") {
+      setStep("summary");
+      return;
     }
+    await complete(nextDraft);
+  }
+
+  async function saveInterests() {
+    const nextDraft = selectedInterests.length > 0
+      ? recordAnswer(draft, interestField, selectedInterests, today())
+      : draft;
+    setDraft(nextDraft);
+    await complete(nextDraft);
+  }
+
+  function toggleInterest(value: string) {
+    setSelectedInterests((current) => current.includes(value)
+      ? current.filter((item) => item !== value)
+      : [...current, value]);
   }
 
   if (!started) {
@@ -509,6 +566,49 @@ function Onboarding(props: OnboardingProps) {
     );
   }
 
+  if (step === "summary") {
+    return (
+      <section className="onboarding-screen onboarding-form onboarding-summary">
+        <p className="onboarding-step">정보 설정 완료</p>
+        <h1>입력한 정보를<br />확인해 주세요</h1>
+        <p className="onboarding-description">입력한 정보는 이 기기 안에서만 저장돼요.</p>
+        <dl className="onboarding-summary-list">
+          {fields.map((summaryField) => (
+            <div key={summaryField.key}>
+              <dt>{summaryField.label}</dt>
+              <dd>{formatProfileValue(summaryField, draft[summaryField.key]?.value)}</dd>
+            </div>
+          ))}
+        </dl>
+        <section className="onboarding-more-info">
+          <h2>관심 분야도 알려주실래요?</h2>
+          <p>공고가 많아지면 관심 있는 분야를 먼저 살펴볼 수 있어요.</p>
+        </section>
+        <button className="onboarding-primary" onClick={() => setStep("interests")} type="button">더 입력하기</button>
+        <button className="onboarding-secondary" disabled={isSaving} onClick={() => void complete(draft)} type="button">바로 둘러보기</button>
+      </section>
+    );
+  }
+
+  if (step === "interests") {
+    return (
+      <section className="onboarding-screen onboarding-form onboarding-interests">
+        <p className="onboarding-step">선택 입력</p>
+        <h1>관심 있는 분야를<br />골라 주세요</h1>
+        <p className="onboarding-description">여러 개를 골라도 되고, 선택하지 않아도 괜찮아요.</p>
+        <div className="interest-options" role="group" aria-label="관심 분야">
+          {interestField.allowed_values?.map((option) => {
+            const value = String(option.value);
+            const selected = selectedInterests.includes(value);
+            return <button aria-pressed={selected} className="interest-option" key={value} onClick={() => toggleInterest(value)} type="button">{option.label}</button>;
+          })}
+        </div>
+        <button className="onboarding-primary" disabled={isSaving} onClick={() => void saveInterests()} type="button">선택 완료</button>
+        <button className="onboarding-secondary" disabled={isSaving} onClick={() => void complete(draft)} type="button">나중에 할게요</button>
+      </section>
+    );
+  }
+
   return (
     <section className="onboarding-screen onboarding-form">
       <div className="onboarding-topline">
@@ -528,6 +628,9 @@ function formatProfileValue(field: FieldDefinition, value: unknown): string {
     return "아직 입력하지 않음";
   }
   if (field.allowed_values) {
+    if (field.data_type === "list" && Array.isArray(value)) {
+      return value.map((item) => field.allowed_values?.find((option) => option.value === item)?.label ?? String(item)).join(" · ");
+    }
     return field.allowed_values.find((option) => option.value === value)?.label ?? String(value);
   }
   if (typeof value === "boolean") {
@@ -539,7 +642,7 @@ function formatProfileValue(field: FieldDefinition, value: unknown): string {
 
 function statusLabel(status: MatchStatus): string {
   if (status === "YES") {
-    return "✓ 대상 가능성 높음";
+    return "대상 가능성 높음";
   }
   if (status === "NO") {
     return "확인 결과 대상 아님";
