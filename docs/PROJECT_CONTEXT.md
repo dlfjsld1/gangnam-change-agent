@@ -47,3 +47,10 @@ Gangnam Change Agent는 강남구 공고와 첨부문서의 변경을 Agent가 �
 ## MVP boundary
 
 현재는 fixture 기반 보일러플레이트다. 실제 Scrapling, HWPX/PDF 파싱, LangGraph 실행, 관리자 승인 UI, 시민 질문 화면은 각 담당 브랜치에서 구현한다.
+
+## MVP public sources
+
+- 정책·혜택: 강남구청 통합 공고 시스템의 고시공고와 채용공고
+- 생활권·정류장: 강남구 주민센터 공통 새소식 게시판
+- 통합 공고는 `not_ancmt_mgt_no`, 주민센터 새소식은 게시물 경로 ID를 source ID로 사용한다.
+- MVP 주민센터 수집은 정류장 데모가 있는 삼성1동부터 시작하고 같은 게시판 구조로 확장한다.
