@@ -18,12 +18,19 @@ from app.repositories.agent_repository import (
 from app.schemas.agent_api import AgentRunRequest, AgentRunResponse
 from app.schemas.review_api import ApproveFieldReviewRequest, RejectReviewRequest
 from app.services.agent_execution import AgentExecutionService, PreviousPolicyNotFound
+from app.services.attachment_archive import (
+    AttachmentArchiveUnavailable,
+    AttachmentPrivacyRejected,
+    configured_public_attachment_archive,
+)
+from app.services.policy_publish import PolicyPublishService
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 APPROVED_POLICY_PATH = PROJECT_ROOT / "demo-data" / "approved-policy.json"
 database = Database()
 agent_repository = AgentRepository(database.session_factory)
+public_attachment_archive = configured_public_attachment_archive()
 
 
 @asynccontextmanager
@@ -72,6 +79,12 @@ def get_agent_execution_service(
     repository: Annotated[AgentRepository, Depends(get_agent_repository)],
 ) -> AgentExecutionService:
     return AgentExecutionService(repository)
+
+
+def get_policy_publish_service(
+    repository: Annotated[AgentRepository, Depends(get_agent_repository)],
+) -> PolicyPublishService:
+    return PolicyPublishService(repository, public_attachment_archive)
 
 
 @app.get("/health")
@@ -196,16 +209,20 @@ def reject_field_definition_review(
 @app.post("/api/policy-packages/{policy_id}/approve")
 def approve_policy_package(
     policy_id: str,
-    repository: Annotated[AgentRepository, Depends(get_agent_repository)],
+    service: Annotated[PolicyPublishService, Depends(get_policy_publish_service)],
 ) -> dict[str, object]:
     try:
-        return repository.approve_policy_package(policy_id)
+        return service.approve(policy_id)
     except PolicyPackageNotFound as error:
         raise HTTPException(
             status_code=404, detail="Policy package not found."
         ) from error
     except ReviewConflict as error:
         raise HTTPException(status_code=409, detail=str(error)) from error
+    except AttachmentPrivacyRejected as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
+    except AttachmentArchiveUnavailable as error:
+        raise HTTPException(status_code=503, detail=str(error)) from error
 
 
 @app.post("/api/policy-packages/{policy_id}/reject")

@@ -3,7 +3,7 @@
 ## Current status
 
 - Current milestone: PostgreSQL 배포 통합 준비
-- Working: health API, 실제 Agent 실행·조회 API, 공통 계약, 공식 게시판 수집, HTML·PDF·HWPX 추출, 최후 복구용 OpenAI 이미지 OCR adapter, 동일 문서 변형 교차 검증, 구조화 정책 후보와 PolicyPackage 조립, Field Registry 해석, Human Review 결과 생성, LangGraph 실행 흐름과 AgentRun 로그 누적, SQLite/PostgreSQL 공용 저장소 계층, 관리자 실행·검토·정책 목록과 상세 조회 API, 관리자 필드 검토 API, 정책 승인·반려와 승인 정책 Publish
+- Working: health API, 실제 Agent 실행·조회 API, 공통 계약, 공식 게시판 수집, HTML·PDF·HWPX 추출, 최후 복구용 OpenAI 이미지 OCR adapter, 동일 문서 변형 교차 검증, 구조화 정책 후보와 PolicyPackage 조립, Field Registry 해석, Human Review 결과 생성, LangGraph 실행 흐름과 AgentRun 로그 누적, SQLite/PostgreSQL 공용 저장소 계층, 관리자 실행·검토·정책 목록과 상세 조회 API, 관리자 필드 검토 API, 정책 승인·반려와 승인 정책 Publish, 승인된 공개 근거 첨부 S3 archive
 - In progress: 관리자·통합 담당의 컨테이너와 PostgreSQL 연결 지원, 배포 전체 흐름 smoke 준비
 - Not implemented: PostgreSQL live integration, 관리자 API 인증·접근 제한
 - Blockers: none
@@ -26,6 +26,7 @@
 - [x] FieldDefinitionReview 승인·수정·반려 API를 저장소와 연결한다.
 - [x] 승인된 PolicyPackage만 시민 API에 공개하도록 Publish 흐름을 연결한다.
 - [x] 관리자 화면용 AgentRun·검토·PolicyPackage 목록과 실행 상세 조회 API를 연결한다.
+- [x] 승인된 공개 근거 첨부를 S3 고정 URL로 제공하는 Publish 흐름을 연결한다.
 - [ ] 배포 PostgreSQL에서 Agent 실행·검토·Publish smoke를 수행한다.
 
 ## Completion criteria
@@ -50,6 +51,25 @@
 - docs/contracts/field-definition-proposal.schema.json
 
 ## Change history
+
+### 2026-08-05 — 승인 근거 첨부 S3 공개 archive
+
+#### Summary
+
+관리자가 정책을 최종 승인할 때 PolicyPackage evidence가 참조하는 공식 공개 첨부만 S3에 업로드하고 evidence URL을 고정 공개 URL로 바꾸도록 Publish service를 연결했다. SourceNotice에는 원본 URL과 S3 key·공개 URL·SHA-256을 함께 보존하며 관리자 실행 상세 API에서 조회할 수 있다. 검토 전 파일, 미사용 첨부와 개인정보 가능 파일명은 공개하지 않는다.
+
+#### Contract impact
+
+D-008과 관리자 상세 응답의 additive `source_notice`를 추가했다. PolicyPackage와 Evidence JSON Schema는 변경하지 않았다.
+
+#### Validation
+
+- S3 업로드 대상 최소화와 evidence URL 재작성 unit test: passed
+- 개인정보 가능 파일명 업로드 차단 test: passed
+- Publish service archive 후 승인 순서 test: passed
+- ruff check: passed
+- ruff format --check: passed
+- pytest: 77 passed
 
 ### 2026-08-05 — 관리자 화면용 조회 API
 
