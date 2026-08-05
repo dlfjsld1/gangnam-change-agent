@@ -203,6 +203,7 @@ def test_admin_queries_filter_and_join_execution_data(tmp_path: Path) -> None:
     proposal = _proposal()
     repository.save_execution(
         _agent_run("run-admin", package["policy_id"]),
+        notice=_notice(),
         policy_package=package,
         field_proposals=[proposal],
         field_reviews=[_review(proposal, "run-admin")],
@@ -241,6 +242,7 @@ def test_admin_queries_filter_and_join_execution_data(tmp_path: Path) -> None:
     assert [item["policy_id"] for item in packages] == ["policy-admin"]
     assert detail is not None
     assert detail["agent_run"]["run_id"] == "run-admin"
+    assert detail["source_notice"]["source_url"] == _notice().source_url
     assert detail["policy_package"]["policy_id"] == "policy-admin"
     assert len(detail["field_definition_proposals"]) == 1
     assert len(detail["field_definition_reviews"]) == 1
@@ -266,6 +268,7 @@ def test_field_approval_rewrites_policy_and_enables_publish(tmp_path: Path) -> N
     }
     repository.save_execution(
         _agent_run("run-1", package["policy_id"]),
+        notice=_notice(),
         policy_package=package,
         field_proposals=[proposal],
         field_reviews=[_review(proposal)],
@@ -279,10 +282,16 @@ def test_field_approval_rewrites_policy_and_enables_publish(tmp_path: Path) -> N
         approved_field=approved_field,
         review_note="표준 필드로 승인",
     )
+    publish_candidate, source_notice = repository.get_policy_publish_context(
+        package["policy_id"]
+    )
     published = repository.approve_policy_package(package["policy_id"])
 
     assert review["status"] == "approved"
     assert review["approved_field"]["review_status"] == "approved"
+    assert publish_candidate["policy_id"] == package["policy_id"]
+    assert source_notice is not None
+    assert source_notice.source_url == _notice().source_url
     assert published["review"]["status"] == "approved"
     assert published["eligibility_rule"]["or"][1]["field"] == "canonical_condition"
     assert any(
