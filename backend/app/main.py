@@ -9,8 +9,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from openai import OpenAIError
 
 from app.database import Database
-from app.repositories.agent_repository import AgentRepository
+from app.repositories.agent_repository import (
+    AgentRepository,
+    PolicyPackageNotFound,
+    ReviewConflict,
+    ReviewNotFound,
+)
 from app.schemas.agent_api import AgentRunRequest, AgentRunResponse
+from app.schemas.review_api import ApproveFieldReviewRequest, RejectReviewRequest
 from app.services.agent_execution import AgentExecutionService, PreviousPolicyNotFound
 
 
@@ -74,17 +80,104 @@ def health_check() -> dict[str, str]:
 
 
 @app.get("/api/policy-packages")
-def list_policy_packages() -> list[dict[str, object]]:
-    return [_load_approved_policy_package()]
+def list_policy_packages(
+    repository: Annotated[AgentRepository, Depends(get_agent_repository)],
+) -> list[dict[str, object]]:
+    packages = repository.list_approved_policy_packages()
+    return packages or [_load_approved_policy_package()]
 
 
 @app.get("/api/policy-packages/{policy_id}")
-def get_policy_package(policy_id: str) -> dict[str, object]:
+def get_policy_package(
+    policy_id: str,
+    repository: Annotated[AgentRepository, Depends(get_agent_repository)],
+) -> dict[str, object]:
+    stored_package = repository.get_approved_policy_package(policy_id)
+    if stored_package is not None:
+        return stored_package
+    if repository.list_approved_policy_packages():
+        raise HTTPException(status_code=404, detail="Policy package not found.")
     policy_package = _load_approved_policy_package()
     if policy_package["policy_id"] != policy_id:
         raise HTTPException(status_code=404, detail="Policy package not found.")
 
     return policy_package
+
+
+@app.get("/api/field-definition-reviews")
+def list_field_definition_reviews(
+    repository: Annotated[AgentRepository, Depends(get_agent_repository)],
+) -> list[dict[str, object]]:
+    return repository.list_field_definition_reviews()
+
+
+@app.post("/api/field-definition-reviews/{review_id}/approve")
+def approve_field_definition_review(
+    review_id: str,
+    request: ApproveFieldReviewRequest,
+    repository: Annotated[AgentRepository, Depends(get_agent_repository)],
+) -> dict[str, object]:
+    try:
+        return repository.approve_field_definition_review(
+            review_id,
+            approved_field=request.approved_field,
+            review_note=request.review_note,
+        )
+    except ReviewNotFound as error:
+        raise HTTPException(
+            status_code=404, detail="Field review not found."
+        ) from error
+    except ReviewConflict as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
+
+
+@app.post("/api/field-definition-reviews/{review_id}/reject")
+def reject_field_definition_review(
+    review_id: str,
+    request: RejectReviewRequest,
+    repository: Annotated[AgentRepository, Depends(get_agent_repository)],
+) -> dict[str, object]:
+    try:
+        return repository.reject_field_definition_review(
+            review_id,
+            review_note=request.review_note,
+        )
+    except ReviewNotFound as error:
+        raise HTTPException(
+            status_code=404, detail="Field review not found."
+        ) from error
+    except ReviewConflict as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
+
+
+@app.post("/api/policy-packages/{policy_id}/approve")
+def approve_policy_package(
+    policy_id: str,
+    repository: Annotated[AgentRepository, Depends(get_agent_repository)],
+) -> dict[str, object]:
+    try:
+        return repository.approve_policy_package(policy_id)
+    except PolicyPackageNotFound as error:
+        raise HTTPException(
+            status_code=404, detail="Policy package not found."
+        ) from error
+    except ReviewConflict as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
+
+
+@app.post("/api/policy-packages/{policy_id}/reject")
+def reject_policy_package(
+    policy_id: str,
+    repository: Annotated[AgentRepository, Depends(get_agent_repository)],
+) -> dict[str, object]:
+    try:
+        return repository.reject_policy_package(policy_id)
+    except PolicyPackageNotFound as error:
+        raise HTTPException(
+            status_code=404, detail="Policy package not found."
+        ) from error
+    except ReviewConflict as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
 
 
 @app.post("/api/agent-runs", response_model=AgentRunResponse, status_code=201)

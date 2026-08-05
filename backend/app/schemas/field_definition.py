@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Literal
 
 from pydantic import BaseModel, Field
@@ -32,7 +33,7 @@ class FieldDefinitionProposal(BaseModel):
 class FieldDefinitionReview(BaseModel):
     review_id: str
     proposal: FieldDefinitionProposal
-    status: Literal["pending"] = "pending"
-    approved_field: None = None
-    review_note: None = None
-    reviewed_at: None = None
+    status: Literal["pending", "approved", "rejected"] = "pending"
+    approved_field: FieldDefinition | None = None
+    review_note: str | None = None
+    reviewed_at: datetime | None = None

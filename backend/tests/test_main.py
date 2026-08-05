@@ -5,6 +5,7 @@ from app.main import (
     get_agent_execution_service,
     get_agent_repository,
 )
+from app.repositories.agent_repository import ReviewConflict, ReviewNotFound
 from app.schemas.agent_api import AgentRunResponse
 from app.schemas.agent_run import AgentNodeLog, AgentRun
 from app.services.agent_execution import PreviousPolicyNotFound
@@ -82,6 +83,46 @@ class FakeAgentRepository:
         return self.agent_run
 
 
+class FakeReviewRepository:
+    def __init__(self, *, conflict: bool = False, missing: bool = False) -> None:
+        self.conflict = conflict
+        self.missing = missing
+
+    def list_field_definition_reviews(self) -> list[dict[str, object]]:
+        return [{"review_id": "review-1", "status": "pending"}]
+
+    def approve_field_definition_review(
+        self,
+        review_id: str,
+        *,
+        approved_field: object = None,
+        review_note: str | None = None,
+    ) -> dict[str, object]:
+        if self.missing:
+            raise ReviewNotFound(review_id)
+        if self.conflict:
+            raise ReviewConflict("already completed")
+        return {
+            "review_id": review_id,
+            "status": "approved",
+            "review_note": review_note,
+        }
+
+
+class FakePublishedRepository:
+    def __init__(self, packages: list[dict[str, object]]) -> None:
+        self.packages = packages
+
+    def list_approved_policy_packages(self) -> list[dict[str, object]]:
+        return self.packages
+
+    def get_approved_policy_package(self, policy_id: str) -> dict[str, object] | None:
+        return next(
+            (item for item in self.packages if item["policy_id"] == policy_id),
+            None,
+        )
+
+
 def test_agent_run_endpoint_executes_service() -> None:
     service = FakeExecutionService()
     app.dependency_overrides[get_agent_execution_service] = lambda: service
@@ -150,3 +191,69 @@ def test_missing_agent_run_returns_404() -> None:
         app.dependency_overrides.clear()
 
     assert response.status_code == 404
+
+
+def test_field_review_can_be_approved() -> None:
+    repository = FakeReviewRepository()
+    app.dependency_overrides[get_agent_repository] = lambda: repository
+    try:
+        response = client.post(
+            "/api/field-definition-reviews/review-1/approve",
+            json={"review_note": "근거 확인"},
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "review_id": "review-1",
+        "status": "approved",
+        "review_note": "근거 확인",
+    }
+
+
+def test_completed_field_review_returns_conflict() -> None:
+    app.dependency_overrides[get_agent_repository] = lambda: FakeReviewRepository(
+        conflict=True
+    )
+    try:
+        response = client.post(
+            "/api/field-definition-reviews/review-1/approve",
+            json={},
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 409
+
+
+def test_missing_field_review_returns_not_found() -> None:
+    app.dependency_overrides[get_agent_repository] = lambda: FakeReviewRepository(
+        missing=True
+    )
+    try:
+        response = client.post(
+            "/api/field-definition-reviews/missing/approve",
+            json={},
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 404
+
+
+def test_public_policy_api_prefers_approved_database_packages() -> None:
+    package = {
+        "policy_id": "stored-policy",
+        "review": {"status": "approved", "reviewed_at": "2026-08-05T00:00:00Z"},
+    }
+    repository = FakePublishedRepository([package])
+    app.dependency_overrides[get_agent_repository] = lambda: repository
+    try:
+        list_response = client.get("/api/policy-packages")
+        fixture_response = client.get("/api/policy-packages/demo-policy-v2")
+    finally:
+        app.dependency_overrides.clear()
+
+    assert list_response.json() == [package]
+    assert fixture_response.status_code == 404
