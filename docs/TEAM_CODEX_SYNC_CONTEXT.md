@@ -33,28 +33,6 @@ Agent 개발 일부를 다른 팀원에게 나누는 것은 선택사항이다.
 - 기본적으로 Agent·백엔드 담당이 전체
   `공고 → 정책 패키지 API` 흐름을 책임진다.
 
-## 임시 위임 Task
-
-`docs/tasks/`의 Task 문서는 다른 담당의 Codex 세션에 Agent Backend 구현
-일부를 잠시 맡기기 위한 제한된 문맥이다. 새 프로젝트를 시작하거나 코드
-ownership을 이전하는 문서가 아니다.
-
-Task 수행자는 다음 순서만 읽고 구현을 시작한다.
-
-1. `AGENTS.md`
-2. 배정받은 `docs/tasks/TASK-*.md`
-3. Task에 명시된 `docs/contracts/` 파일
-4. `docs/worklogs/agent-backend/WORKLOG.md`
-
-운영 규칙:
-
-- Task에 적힌 범위와 수정 금지 영역을 우선한다.
-- Graph topology와 State 변경은 Agent Backend 담당에게 남긴다.
-- backend 구현 결과와 실제 검증은 Agent Backend Work log에 기록한다.
-- Task 완료는 장기 ownership 변경이나 Agent Backend 다음 작업의 인수를 뜻하지 않는다.
-- 완료 후 Citizen 또는 Admin 담당은 자기 feature 브랜치의 원래 Work log와 Next actions로 즉시 복귀한다.
-- 같은 backend 파일을 Agent Backend 담당과 동시에 수정하지 않도록 시작 전에 작업 파일을 합의한다.
-
 ---
 
 # 2. 왜 저장소 문서가 필요한가
@@ -95,9 +73,6 @@ Task 수행자는 다음 순서만 읽고 구현을 시작한다.
 └─ docs/
    ├─ PROJECT_CONTEXT.md
    ├─ DECISIONS.md
-   ├─ tasks/
-   │  ├─ TASK-001-field-registry-node.md
-   │  └─ TASK-002-review-node.md
    ├─ contracts/
    │  ├─ policy-package.schema.json
    │  ├─ field-definition.schema.json
@@ -184,15 +159,6 @@ Work log는 프로젝트 전체 기획을 공지하는 파일이 아니다.
 - `DECISIONS.md`: 공통 결정과 이유
 - `contracts/`: 공유되는 코드 계약
 - `WORKLOG.md`: 각 담당의 실제 구현 상태
-
-## `docs/tasks/`
-
-다른 담당의 Codex가 Agent Backend의 제한된 구현을 잠시 수행할 때 필요한
-목적, 범위, 입력·출력 계약, 금지 영역과 복귀 절차를 기록한다.
-
-- Task 문서는 현재 코드와 contracts를 대체하지 않는다.
-- Task에 명시되지 않은 Agent Backend 작업으로 범위를 확장하지 않는다.
-- Task 종료 후 장기 진행 상태는 담당별 Work log에서만 관리한다.
 
 ---
 

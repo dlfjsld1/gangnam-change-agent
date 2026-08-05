@@ -2,6 +2,9 @@ from json import loads
 from pathlib import Path
 from types import SimpleNamespace
 
+from jsonschema import Draft202012Validator, FormatChecker
+from referencing import Registry, Resource
+
 from app.schemas.document_extraction import (
     AttachmentComparison,
     DocumentExtraction,
@@ -17,8 +20,7 @@ from app.schemas.source_notice import SourceAttachment, SourceNotice
 from app.services.field_registry import FieldRegistry
 from app.services.policy_builder import build_policy_package
 from app.tools.openai_policy_extractor import OpenAIPolicyExtractor
-from jsonschema import Draft202012Validator, FormatChecker
-from referencing import Registry, Resource
+
 
 CONTRACTS_DIR = Path(__file__).parents[2] / "docs" / "contracts"
 
@@ -184,21 +186,6 @@ def _validate_field_proposal(payload: dict[str, object]) -> None:
     ).validate(payload)
 
 
-def _validate_contract(payload: dict[str, object], title: str) -> None:
-    schemas = [
-        loads(path.read_text("utf-8")) for path in CONTRACTS_DIR.glob("*.schema.json")
-    ]
-    registry = Registry().with_resources(
-        (schema["$id"], Resource.from_contents(schema)) for schema in schemas
-    )
-    schema = next(schema for schema in schemas if schema["title"] == title)
-    Draft202012Validator(
-        schema,
-        registry=registry,
-        format_checker=FormatChecker(),
-    ).validate(payload)
-
-
 def test_openai_extractor_uses_structured_policy_draft() -> None:
     draft = _draft()
     client = FakeClient(draft)
@@ -231,7 +218,6 @@ def test_verified_draft_builds_schema_valid_policy_package() -> None:
         "and": [{"field": "residence", "operator": "equals", "value": "강남구"}]
     }
     _validate_policy_package(result.policy_package)
-    _validate_contract(result.agent_run.model_dump(mode="json"), "AgentRun")
 
 
 def test_ocr_title_mismatch_requires_review() -> None:
@@ -294,17 +280,7 @@ def test_unknown_field_remains_pending_and_unresolved() -> None:
     assert result.agent_run.review_required is True
     assert result.agent_run.unresolved_fields == ["residence"]
     assert len(result.field_proposals) == 1
-    assert len(result.field_reviews) == 1
-    assert result.field_reviews[0].review_id == "run-new-field:residence"
-    assert result.field_reviews[0].status == "pending"
-    assert result.field_reviews[0].approved_field is None
-    assert result.field_reviews[0].review_note is None
-    assert result.field_reviews[0].reviewed_at is None
     _validate_field_proposal(result.field_proposals[0].model_dump(mode="json"))
-    _validate_contract(
-        result.field_reviews[0].model_dump(mode="json"),
-        "FieldDefinitionReview",
-    )
     assert result.policy_package["required_profile_fields"][0]["review_status"] == (
         "pending"
     )
@@ -369,37 +345,3 @@ def test_pending_field_is_not_proposed_twice() -> None:
     assert result.field_proposals == []
     assert result.agent_run.review_required is True
     assert result.agent_run.unresolved_fields == ["residence"]
-    assert result.field_reviews == []
-
-
-def test_review_reasons_and_fields_are_deduplicated_in_input_order() -> None:
-    corpus = _corpus().model_copy(
-        update={
-            "review_required": True,
-            "review_reasons": ["추출 실패", "추출 실패"],
-        }
-    )
-    duplicate_condition = (
-        _draft()
-        .conditions[0]
-        .model_copy(update={"field": "household_type", "label": "가구 유형"})
-    )
-    draft = _draft().model_copy(
-        update={"conditions": [duplicate_condition, duplicate_condition]}
-    )
-
-    result = build_policy_package(
-        "run-stable-review",
-        _notice(),
-        corpus,
-        draft,
-        FieldRegistry(),
-    )
-
-    assert result.agent_run.review_reason == (
-        "추출 실패; 승인되지 않은 프로필 필드: household_type"
-    )
-    assert result.agent_run.unresolved_fields == ["household_type"]
-    assert [review.review_id for review in result.field_reviews] == [
-        "run-stable-review:household_type"
-    ]

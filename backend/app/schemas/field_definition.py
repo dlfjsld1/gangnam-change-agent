@@ -2,6 +2,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+
 FieldDataType = Literal["boolean", "enum", "number", "date", "string", "list"]
 Sensitivity = Literal["low", "medium", "high"]
 FieldReviewStatus = Literal["pending", "approved", "rejected"]
@@ -27,12 +28,3 @@ class FieldDefinitionProposal(BaseModel):
     proposed_field: FieldDefinition
     review_required: Literal[True] = True
     review_reason: str
-
-
-class FieldDefinitionReview(BaseModel):
-    review_id: str
-    proposal: FieldDefinitionProposal
-    status: Literal["pending"] = "pending"
-    approved_field: None = None
-    review_note: None = None
-    reviewed_at: None = None

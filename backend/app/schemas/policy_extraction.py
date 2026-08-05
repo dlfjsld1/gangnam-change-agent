@@ -7,9 +7,9 @@ from app.schemas.agent_run import AgentRun
 from app.schemas.field_definition import (
     FieldDataType,
     FieldDefinitionProposal,
-    FieldDefinitionReview,
     Sensitivity,
 )
+
 
 RuleOperator = Literal["equals", "in", "between", "contains", "exists"]
 
@@ -63,4 +63,3 @@ class PolicyBuildResult(BaseModel):
     agent_run: AgentRun
     evidence_issues: list[EvidenceIssue]
     field_proposals: list[FieldDefinitionProposal]
-    field_reviews: list[FieldDefinitionReview]
