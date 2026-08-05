@@ -36,13 +36,14 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000
 
 - `GET /health`가 `{"status":"ok"}`를 반환한다.
 - 승인 정책 fixture 조회 API가 실행된다.
+- `POST /api/agent-runs`가 LangGraph를 실행하고 결과를 DB에 저장한다.
+- `GET /api/agent-runs/{run_id}`가 저장된 AgentRun을 조회한다.
+- FastAPI lifespan에서 SQLAlchemy schema를 초기화한다.
 - OpenAI client는 Agent 요청 전에는 외부 API를 호출하지 않는다.
 - 전체 백엔드 자동 테스트, Ruff와 formatter 검증을 통과한 상태에서 전달한다.
 
 아직 실제 배포 기능으로 간주하면 안 되는 항목:
 
-- `POST /api/agent-runs` 실제 실행 API
-- FastAPI startup과 DB schema/repository 연결
 - 관리자 승인·수정·반려 API
 - 승인 후 Publish와 실제 정책 목록 DB 조회
 - PostgreSQL 서버를 사용한 live integration test
@@ -120,9 +121,9 @@ repository를 소비한다.
 - 시민별 정책 판정 결과
 - 시민의 민감 속성
 
-현재 SQLAlchemy 모델은 PostgreSQL dialect DDL compile까지 검증됐다. PostgreSQL
-live 연결, schema initialization과 migration 방식은 실제 Agent API 연결 단계에서
-다시 확인한다.
+현재 FastAPI startup은 SQLAlchemy schema를 초기화하며 PostgreSQL dialect DDL
+compile까지 검증됐다. PostgreSQL live 연결과 운영 migration 방식은 AWS DB 연결
+단계에서 다시 확인한다.
 
 ## Container verification
 
@@ -134,7 +135,8 @@ live 연결, schema initialization과 migration 방식은 실제 Agent API 연�
 4. `/health` HTTP 200과 응답 body 확인
 5. 현재 fallback 정책 API가 필요하면 `demo-data` 포함 여부 확인
 6. container 종료 후 secret과 시민 데이터가 log에 남지 않았는지 확인
-7. 실제 API가 병합된 뒤 PostgreSQL 연결과 관리자 API smoke 재실행
+7. Agent API 실행 결과가 DB에 저장되고 AgentRun을 다시 조회할 수 있는지 확인
+8. PostgreSQL 연결과 관리자 API가 준비되면 관련 smoke 재실행
 
 실행하지 않은 PostgreSQL, OpenAI, AWS 검증을 성공했다고 기록하지 않는다.
 

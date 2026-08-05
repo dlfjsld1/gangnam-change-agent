@@ -101,6 +101,7 @@ def test_sqlite_repository_persists_agent_result_and_proposal(tmp_path: Path) ->
 
     assert repository.get_agent_run("run-1")["review_required"] is True
     assert repository.get_policy_package(package["policy_id"]) == package
+    assert repository.get_approved_policy_package(package["policy_id"]) is None
     with database.session_factory() as session:
         proposal_count = session.scalar(
             select(func.count()).select_from(FieldDefinitionProposalRecord)
@@ -117,6 +118,26 @@ def test_sqlite_repository_persists_agent_result_and_proposal(tmp_path: Path) ->
         "policy_packages",
         "source_notices",
     }
+
+    with database.session_factory.begin() as session:
+        review_record = session.get(
+            FieldDefinitionReviewRecord,
+            "run-1:new_condition",
+        )
+        assert review_record is not None
+        review_record.status = "approved"
+        review_record.payload = {
+            **review_record.payload,
+            "status": "approved",
+            "approved_field": {
+                **proposal.proposed_field.model_dump(mode="json"),
+                "review_status": "approved",
+            },
+        }
+
+    approved_definitions = repository.list_approved_field_definitions()
+    assert [definition.key for definition in approved_definitions] == ["new_condition"]
+    assert approved_definitions[0].review_status == "approved"
 
 
 def test_latest_policy_query_returns_only_approved_version(tmp_path: Path) -> None:
@@ -142,6 +163,7 @@ def test_latest_policy_query_returns_only_approved_version(tmp_path: Path) -> No
 
     assert latest is not None
     assert latest["policy_id"] == "demo-policy-v2"
+    assert repository.get_approved_policy_package("demo-policy-v2") == approved
 
 
 def test_failed_run_can_be_saved_without_notice_or_policy(tmp_path: Path) -> None:

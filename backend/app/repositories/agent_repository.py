@@ -11,7 +11,11 @@ from app.db_models import (
     SourceNoticeRecord,
 )
 from app.schemas.agent_run import AgentRun
-from app.schemas.field_definition import FieldDefinitionProposal, FieldDefinitionReview
+from app.schemas.field_definition import (
+    FieldDefinition,
+    FieldDefinitionProposal,
+    FieldDefinitionReview,
+)
 from app.schemas.source_notice import SourceNotice
 
 
@@ -50,6 +54,26 @@ class AgentRepository:
         with self._session_factory() as session:
             record = session.get(PolicyPackageRecord, policy_id)
             return record.payload if record is not None else None
+
+    def get_approved_policy_package(self, policy_id: str) -> dict[str, Any] | None:
+        with self._session_factory() as session:
+            record = session.get(PolicyPackageRecord, policy_id)
+            if record is None or record.review_status != "approved":
+                return None
+            return record.payload
+
+    def list_approved_field_definitions(self) -> list[FieldDefinition]:
+        statement: Select[tuple[FieldDefinitionReviewRecord]] = select(
+            FieldDefinitionReviewRecord
+        ).where(FieldDefinitionReviewRecord.status == "approved")
+        definitions: dict[str, FieldDefinition] = {}
+        with self._session_factory() as session:
+            for record in session.scalars(statement):
+                approved_field = record.payload.get("approved_field")
+                if isinstance(approved_field, dict):
+                    definition = FieldDefinition.model_validate(approved_field)
+                    definitions[definition.key] = definition
+        return list(definitions.values())
 
     def get_latest_approved_policy(
         self,

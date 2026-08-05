@@ -178,6 +178,7 @@ def _build_policy_node(
             "policy_package": result.policy_package,
             "field_proposals": result.field_proposals,
             "field_reviews": result.field_reviews,
+            "evidence_issues": result.evidence_issues,
             "review_required": (
                 state.get("review_required", False) or result.agent_run.review_required
             ),
