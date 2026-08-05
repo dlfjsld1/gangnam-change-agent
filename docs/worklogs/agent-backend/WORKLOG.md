@@ -2,10 +2,10 @@
 
 ## Current status
 
-- Current milestone: 공식 강남구 게시판 수집 adapter
-- Working: health API, 승인 정책 fixture API, 공통 계약, 공식 게시판 수집, HTML·PDF·HWPX 추출, 최후 복구용 OpenAI 이미지 OCR adapter, 동일 문서 변형 교차 검증, 구조화 정책 후보와 PolicyPackage 조립
-- In progress: LangGraph 전체 노드·도구 실행 로그 연결
-- Not implemented: DB, LangGraph 실행
+- Current milestone: 실제 Agent 실행 API
+- Working: health API, 승인 정책 fixture API, 공통 계약, 공식 게시판 수집, HTML·PDF·HWPX 추출, 최후 복구용 OpenAI 이미지 OCR adapter, 동일 문서 변형 교차 검증, 구조화 정책 후보와 PolicyPackage 조립, Field Registry 해석, Human Review 결과 생성, LangGraph 실행 흐름과 AgentRun 로그 누적, SQLite/PostgreSQL 공용 저장소 계층
+- In progress: LangGraph를 호출하는 실제 Agent 실행 API
+- Not implemented: 실제 Agent 실행 API, 관리자 승인 Publish
 - Blockers: none
 
 ## Next actions
@@ -19,7 +19,10 @@
 - [x] 추출 결과를 EligibilityRule과 PolicyPackage 구조로 변환한다.
 - [x] 기존 FieldDefinition 재사용 또는 FieldDefinitionProposal 생성을 연결한다.
 - [x] 문서 추출·근거 비교 로그와 review_required 사유를 AgentRun에 기록한다.
-- [ ] LangGraph 전체 노드·도구 실행 로그를 AgentRun에 누적한다.
+- [x] LangGraph 전체 노드·도구 실행 로그를 AgentRun에 누적한다.
+- [x] 같은 정책 계열의 이전 공고와 신규 공고를 비교해 구조화된 diff를 생성한다.
+- [x] 실행·정책 후보·검토 상태를 저장소 인터페이스 뒤에 영속화한다.
+- [ ] LangGraph를 호출하고 결과를 반환하는 실제 Agent 실행 API를 추가한다.
 
 ## Completion criteria
 
@@ -43,6 +46,106 @@
 - docs/contracts/field-definition-proposal.schema.json
 
 ## Change history
+
+### 2026-08-05 — SQLite/PostgreSQL 공용 저장소 계층
+
+#### Summary
+
+SQLAlchemy 모델과 AgentRepository를 추가해 공개 SourceNotice, AgentRun, PolicyPackage 후보, FieldDefinitionProposal과 검토 상태를 저장하도록 했다. 로컬은 SQLite, AWS 배포는 PostgreSQL을 사용하며 `DATABASE_URL`로 전환한다. 승인된 이전 PolicyPackage만 조회하는 repository 경로를 포함한다.
+
+#### Contract impact
+
+D-007에 팀 합의를 기록했으며 공통 JSON Schema는 변경하지 않았다. 시민 프로필과 시민별 판정 결과는 저장 대상에서 제외한다.
+
+#### Validation
+
+- ruff check: passed
+- ruff format --check: passed
+- pytest: 46 passed
+- SQLite schema 생성·실행 결과 저장·제안 저장·승인 정책 조회 경로 passed
+- PostgreSQL dialect table DDL compile: passed
+
+### 2026-08-05 — 이전 정책 비교와 변경 diff 생성
+
+#### Summary
+
+명시적으로 선택된 이전 PolicyPackage와 신규 후보의 재귀 EligibilityRule, 시행일, 마감일, 필요한 행동을 비교해 `changes`를 생성한다. 이전 정책의 family와 version을 이어받고, 조건 확대·축소·추가·제거를 구분해 LangGraph의 검토 분기 전에 실행한다.
+
+#### Contract impact
+
+기존 PolicyPackage `changes` 구조를 그대로 사용하며 공통 schema는 변경하지 않았다. 이전 정책 계열 선택과 조회는 향후 저장소/API 단계의 책임으로 남긴다.
+
+#### Validation
+
+- ruff check: passed
+- ruff format --check: passed
+- pytest: 42 passed
+- PolicyPackage JSON Schema validation: 조건 확대·날짜·행동 변경 경로 passed
+- 재귀 AND/OR diff: 추가·제거·확대 경로 passed
+
+### 2026-08-05 — LangGraph 실행 흐름 연결
+
+#### Summary
+
+공식 공고 수집, 문서 분석, 정책 후보 추출, PolicyPackage 조립을 `StateGraph`로 연결했다. 각 단계의 AgentNodeLog를 하나의 AgentRun에 누적하고, 검토 필요 결과는 Publish하지 않고 관리자 검토 대기로, 예외는 실패 상태로 분기한다.
+
+#### Contract impact
+
+공통 schema는 변경하지 않고 기존 AgentRun 계약을 그대로 사용한다. Field Registry와 Human Review의 세부 로직은 임시 위임 Task 범위로 남겨 두고 Graph topology만 연결했다.
+
+#### Validation
+
+- ruff check: passed
+- ruff format --check: passed
+- pytest: 38 passed
+- AgentRun JSON Schema validation: completed·review_required·failed 경로 passed
+
+### 2026-08-05 — TASK-001 Field Registry Node
+
+#### Summary
+
+정확한 key를 우선 적용하고, 공백·문장부호를 정규화한 label과 data type이 하나만 일치할 때 canonical FieldDefinition을 재사용하도록 FieldRegistry 해석 결과를 추가했다. 일치 후보가 없거나 여러 개면 pending FieldDefinitionProposal을 하나만 만들고, pending/rejected field는 새 제안 없이 unresolved field로 남긴다. 정책 조립은 해석된 canonical key를 eligibility rule에 사용한다.
+
+#### Contract impact
+
+공유 계약, LangGraph topology, `backend/app/agent/graph.py`, `backend/app/agent/state.py`는 수정하지 않았다. FieldDefinitionProposal과 PolicyPackage JSON Schema는 기존 검증을 통과했다.
+
+#### Validation
+
+- 대상 파일 `ruff check`: passed
+- 대상 파일 `ruff format --check`: passed
+- `pytest -q`: 41 passed, 5 warnings
+- `pytest -q tests/test_field_registry.py tests/test_policy_builder.py`: 14 passed
+- JSON Schema validation: FieldDefinitionProposal과 PolicyPackage validation passed
+- 전체 `ruff check .`: 기존 범위 밖 파일의 21개 이슈로 failed
+- 전체 `ruff format --check .`: 기존 `tests/test_document_extractor.py` 1개 파일로 failed
+
+#### Dependency
+
+- 작업 완료 후 Graph node 연결과 State partial update 연결은 Agent Backend 담당자가 진행한다.
+
+### 2026-08-05 — TASK-002 Human Review 결과 생성
+
+#### Summary
+
+근거 불일치·추출 실패·미승인 field 사유를 최초 등장 순서로 중복 제거해 AgentRun에 기록하고, PolicyPackage review를 pending으로 유지하며 신규 FieldDefinitionProposal마다 pending FieldDefinitionReview를 생성하도록 Graph 독립 service를 연결했다.
+
+#### Contract impact
+
+기존 AgentRun, PolicyPackage, FieldDefinitionProposal, FieldDefinitionReview 계약을 그대로 사용했다. Graph·State·Publish API·DB·관리자 UI와 공통 schema는 변경하지 않았다.
+
+#### Validation
+
+- TASK-002 변경 파일 ruff check: passed
+- TASK-002 변경 파일 ruff format --check: passed
+- 전체 backend pytest: 36 passed, 5 warnings
+- AgentRun, PolicyPackage, FieldDefinitionProposal, FieldDefinitionReview JSON Schema validation: passed
+- repository 전체 ruff check: 기존 파일의 27개 위반으로 failed; TASK-002 변경 파일은 통과
+
+#### Dependencies
+
+- LangGraph 최종 node 등록과 ChangeAgentState mapping은 Agent Backend 담당 작업으로 남는다.
+- pending review 저장과 관리자 API 연동은 Publish API·DB 구현 이후 연결한다.
 
 ### 2026-08-05 — FieldDefinition 재사용과 신규 제안 연결
 

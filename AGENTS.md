@@ -20,9 +20,29 @@ Use these sources for their assigned purpose:
 - `docs/contracts/`: shared API, JSON Schema, matching, and fixture contracts
 - `docs/worklogs/`: responsible area's current status, next actions, dependencies, and history
 - `docs/TEAM_CODEX_SYNC_CONTEXT.md`: detailed collaboration, implementation, validation, and deployment procedures
+- `docs/deployment/BACKEND_CONTAINER_HANDOFF.md`: required backend container and AWS handoff context for Admin·Integration work
 
 Do not treat `docs/archive/` as the current specification.
 If documents conflict, prefer accepted decisions and current contracts, then report and correct the stale document.
+
+Before creating or changing the backend Dockerfile, container runtime, or AWS backend
+deployment, read `docs/deployment/BACKEND_CONTAINER_HANDOFF.md` after this file and
+before the Admin·Integration Work log.
+
+### Delegated Task exception
+
+When the user explicitly assigns a document under `docs/tasks/`, use this narrow
+reading order instead of the normal project reading order:
+
+1. `AGENTS.md`
+2. The assigned Task document
+3. Only the contracts listed by that Task
+4. `docs/worklogs/agent-backend/WORKLOG.md`
+
+A delegated Task is temporary implementation context, not an ownership transfer.
+Record meaningful backend implementation in the Agent Backend Work log. After the
+Task is complete, return to the assignee's original branch, ownership area, Work
+log, and Next actions. Do not continue selecting Agent Backend work from the Task.
 
 ## 2. Branch, code area, and Work log mapping
 

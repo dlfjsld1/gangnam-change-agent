@@ -72,3 +72,14 @@
 - Reason: LLM은 구조화 후보 생성에만 사용하고 원문 근거·연산자·필드 승인 여부는 로컬 코드가 다시 검증하기 위함이다.
 - Affected areas: backend, frontend/admin
 - Contract impact: 현재 PolicyPackage와 AgentRun schema를 그대로 사용한다.
+
+## D-007 — 로컬 SQLite와 배포 PostgreSQL
+
+- Date: 2026-08-05
+- Status: accepted
+- Decision: 로컬 개발은 SQLite를 사용하고 AWS 배포 환경은 PostgreSQL을 사용한다. 백엔드는 SQLAlchemy 저장소 계층을 공유하며 `DATABASE_URL`로 dialect를 전환한다.
+- Stored data: 공개 SourceNotice, AgentRun, PolicyPackage 후보, FieldDefinitionProposal과 관리자 검토 상태
+- Excluded data: 시민 프로필과 시민별 판정 결과는 서버 데이터베이스에 저장하지 않는다.
+- Reason: 로컬 개발 설정은 가볍게 유지하면서 배포 환경의 동시 접근과 영속성을 지원하기 위함이다.
+- Affected areas: backend, frontend/admin, infra
+- Contract impact: 공통 JSON Schema 변경 없음. 실제 Agent 실행 및 관리자 API는 같은 저장소 계층을 사용한다.

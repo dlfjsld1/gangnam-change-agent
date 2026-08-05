@@ -1,9 +1,9 @@
-from difflib import SequenceMatcher
 import re
+from difflib import SequenceMatcher
 
-from app.schemas.agent_run import AgentNodeLog, AgentRun
+from app.schemas.agent_run import AgentNodeLog
 from app.schemas.document_extraction import DocumentExtraction, NoticeDocumentCorpus
-from app.schemas.field_definition import FieldDefinition, FieldDefinitionProposal
+from app.schemas.field_definition import FieldDefinition
 from app.schemas.policy_extraction import (
     EvidenceIssue,
     PolicyBuildResult,
@@ -12,7 +12,7 @@ from app.schemas.policy_extraction import (
 )
 from app.schemas.source_notice import SourceNotice
 from app.services.field_registry import FieldRegistry
-
+from app.services.human_review import build_human_review
 
 MINIMUM_TITLE_OCR_SIMILARITY = 0.55
 
@@ -26,25 +26,32 @@ def build_policy_package(
 ) -> PolicyBuildResult:
     documents = _source_documents(notice, corpus)
     issues = _validate_evidence(notice, corpus, draft, documents)
-    unresolved_fields: list[str] = []
     definitions: dict[str, FieldDefinition] = {}
-    field_proposals: list[FieldDefinitionProposal] = []
     rules: list[dict[str, object]] = []
+    candidates = [
+        FieldDefinition(
+            key=condition.field,
+            label=condition.label,
+            data_type=condition.data_type,
+            question=condition.question,
+            sensitivity=condition.sensitivity,
+            validity_days=condition.validity_days,
+            review_status="pending",
+        )
+        for condition in draft.conditions
+    ]
+    field_resolution = field_registry.resolve_fields(candidates)
 
-    for condition in draft.conditions:
-        if condition.field not in definitions:
-            definition, proposal = _resolve_field_definition(
-                notice,
-                condition,
-                field_registry,
-            )
-            definitions[condition.field] = definition
-            if proposal is not None:
-                field_proposals.append(proposal)
-            if definition.review_status != "approved":
-                unresolved_fields.append(condition.field)
+    for condition, definition in zip(
+        draft.conditions, field_resolution.resolved_fields
+    ):
+        definitions[definition.key] = definition
         try:
-            rules.append(_eligibility_rule(condition))
+            rules.append(
+                _eligibility_rule(
+                    condition.model_copy(update={"field": definition.key})
+                )
+            )
         except ValueError as error:
             issues.append(
                 EvidenceIssue(
@@ -90,8 +97,8 @@ def build_policy_package(
         }
 
     reasons = [issue.message for issue in issues]
-    if unresolved_fields:
-        reasons.append(f"승인되지 않은 프로필 필드: {', '.join(unresolved_fields)}")
+    if field_resolution.review_reason:
+        reasons.append(field_resolution.review_reason)
     review_required = bool(reasons)
     node_logs = [
         AgentNodeLog(
@@ -113,53 +120,27 @@ def build_policy_package(
             status="completed",
             message=(
                 "새 프로필 필드를 관리자 검토 대상으로 제안했습니다."
-                if field_proposals
+                if field_resolution.field_proposals
                 else "기존 프로필 필드의 승인 상태를 확인했습니다."
             ),
         ),
     ]
+    agent_run, field_reviews = build_human_review(
+        run_id=run_id,
+        notice_id=notice.source_id,
+        policy_id=policy_id if package is not None else None,
+        node_logs=node_logs,
+        reasons=reasons,
+        unresolved_fields=field_resolution.unresolved_fields,
+        field_proposals=field_resolution.field_proposals,
+    )
     return PolicyBuildResult(
         policy_package=package,
         evidence_issues=issues,
-        field_proposals=field_proposals,
-        agent_run=AgentRun(
-            run_id=run_id,
-            notice_id=notice.source_id,
-            status="review_required" if review_required else "completed",
-            node_logs=node_logs,
-            review_required=review_required,
-            review_reason="; ".join(reasons) or None,
-            unresolved_fields=sorted(set(unresolved_fields)),
-            policy_id=policy_id if package is not None else None,
-        ),
+        field_proposals=field_resolution.field_proposals,
+        field_reviews=field_reviews,
+        agent_run=agent_run,
     )
-
-
-def _resolve_field_definition(
-    notice: SourceNotice,
-    condition: PolicyConditionDraft,
-    field_registry: FieldRegistry,
-) -> tuple[FieldDefinition, FieldDefinitionProposal | None]:
-    existing = field_registry.find(condition.field)
-    if existing is not None:
-        return existing, None
-
-    proposed = FieldDefinition(
-        key=condition.field,
-        label=condition.label,
-        data_type=condition.data_type,
-        question=condition.question,
-        sensitivity=condition.sensitivity,
-        validity_days=condition.validity_days,
-        review_status="pending",
-    )
-    proposal = field_registry.propose(
-        proposed,
-        f"공고 {notice.source_id}에서 새 조건 필드를 발견했습니다: {condition.label}",
-    )
-    if proposal is None:
-        raise RuntimeError(f"Unable to create field proposal: {condition.field}")
-    return proposal.proposed_field, proposal
 
 
 def _validate_evidence(
