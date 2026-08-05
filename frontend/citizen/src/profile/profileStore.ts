@@ -3,6 +3,7 @@ import type { LocalProfile } from "./dynamicProfile";
 
 const DATABASE_NAME = "gangnam-change-agent";
 const STORE_NAME = "local-profile";
+const HIDDEN_POLICY_STORE = "hidden-policies";
 const PROFILE_KEY = "current";
 
 
@@ -31,8 +32,15 @@ export async function saveProfile(profile: LocalProfile): Promise<void> {
 
 function openDatabase(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DATABASE_NAME, 1);
-    request.onupgradeneeded = () => request.result.createObjectStore(STORE_NAME);
+  const request = indexedDB.open(DATABASE_NAME, 2);
+  request.onupgradeneeded = () => {
+    if (!request.result.objectStoreNames.contains(STORE_NAME)) {
+      request.result.createObjectStore(STORE_NAME);
+    }
+    if (!request.result.objectStoreNames.contains(HIDDEN_POLICY_STORE)) {
+      request.result.createObjectStore(HIDDEN_POLICY_STORE);
+    }
+  };
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);
   });
