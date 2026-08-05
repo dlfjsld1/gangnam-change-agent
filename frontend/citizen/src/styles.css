@@ -94,7 +94,16 @@ input:focus-visible {
 .feed-panel {
   position: relative;
   margin-top: -58px;
+  height: calc(100dvh - 242px);
+  min-height: 480px;
   padding: 0 16px 24px;
+  overflow-y: auto;
+  scroll-snap-type: y mandatory;
+  scrollbar-width: none;
+}
+
+.feed-panel::-webkit-scrollbar {
+  display: none;
 }
 
 .privacy-note {
@@ -124,11 +133,14 @@ input:focus-visible {
 }
 
 .policy-card {
+  min-height: calc(100dvh - 310px);
   padding: 24px;
   background: #fff;
   border: 1px solid #e3e9f3;
   border-radius: 24px;
   box-shadow: 0 12px 28px rgba(18, 43, 91, 0.1);
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
 }
 
 .card-topline {
@@ -477,7 +489,7 @@ input:focus-visible {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  * {
-    scroll-behavior: auto;
+  .feed-panel {
+    scroll-snap-type: none;
   }
 }

@@ -29,7 +29,7 @@
 
 - Primary navigation: 홈, 전체 변경, 내 정보
 - Core routes/screens: 정책 카드 피드 홈, 카드 상세(후속), 로컬 프로필(후속)
-- Content hierarchy: 개인 관련 변화 수 → 개인정보 안내 → 가장 중요한 정책 카드 → 추가 카드 → 하단 탐색
+- Content hierarchy: 개인 관련 변화 수 → 개인정보 안내 → 한 장씩 넘기는 정책 카드 피드 → 하단 탐색
 
 ## Design principles
 
@@ -44,7 +44,7 @@
 - Typography: 한국어 가독성을 우선한 굵은 제목과 편안한 본문 크기
 - Spacing/layout rhythm: 모바일 20~24px 여백, 카드 간 16px, 큰 헤더와 둥근 상단 모서리
 - Shape/radius/elevation: 20~28px 둥근 카드, 얕은 테두리와 부드러운 그림자
-- Motion: 필수 동작 외 애니메이션을 최소화하고, reduced motion을 존중한다.
+- Motion: 정책 카드는 세로 스냅으로 한 장씩 넘기며, reduced motion 환경에서는 강제 스냅을 해제한다.
 - Imagery/iconography: 단순한 선형 기호와 텍스트 라벨을 함께 사용한다.
 
 ## Components

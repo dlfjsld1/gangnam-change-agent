@@ -19,6 +19,7 @@
 - [x] 승인된 정책 패키지만 읽는 API adapter와 fixture fallback을 연결한다.
 - [x] 사용자 A/B 프로필 전환과 결과·해야 할 일 화면을 완성한다.
 - [x] 정책 변경·마감일·해야 할 일·근거를 보여주는 카드 상세 화면을 구현한다.
+- [x] 정책 카드를 세로 스냅 피드로 표시한다.
 
 ## Completion criteria
 
@@ -146,4 +147,14 @@ fixture 정책의 승인된 required profile field를 DynamicQuestion 입력으�
 #### Tests
 
 - `npm.cmd test`: 8 passed
+- `npm.cmd run build`: passed
+
+### 2026-08-05 — 세로 스냅 정책 피드
+
+#### Summary
+
+정책 카드가 여러 개일 때 모바일 화면에서 한 장씩 아래로 넘겨 보도록 세로 스냅 피드를 적용했다.
+
+#### Tests
+
 - `npm.cmd run build`: passed
