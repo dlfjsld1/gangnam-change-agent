@@ -1,3 +1,5 @@
+from copy import deepcopy
+from datetime import datetime, timezone
 from typing import Any
 
 from sqlalchemy import Select, select
@@ -11,7 +13,11 @@ from app.db_models import (
     SourceNoticeRecord,
 )
 from app.schemas.agent_run import AgentRun
-from app.schemas.field_definition import FieldDefinitionProposal, FieldDefinitionReview
+from app.schemas.field_definition import (
+    FieldDefinition,
+    FieldDefinitionProposal,
+    FieldDefinitionReview,
+)
 from app.schemas.source_notice import SourceNotice
 
 
@@ -46,10 +52,257 @@ class AgentRepository:
             record = session.get(AgentRunRecord, run_id)
             return record.payload if record is not None else None
 
+    def list_agent_runs(
+        self,
+        *,
+        status: str | None = None,
+        review_required: bool | None = None,
+        limit: int = 50,
+    ) -> list[dict[str, Any]]:
+        statement: Select[tuple[AgentRunRecord]] = select(AgentRunRecord)
+        if status is not None:
+            statement = statement.where(AgentRunRecord.status == status)
+        if review_required is not None:
+            statement = statement.where(
+                AgentRunRecord.review_required == review_required
+            )
+        statement = statement.order_by(AgentRunRecord.created_at.desc()).limit(limit)
+        with self._session_factory() as session:
+            return [record.payload for record in session.scalars(statement)]
+
+    def get_agent_run_detail(self, run_id: str) -> dict[str, Any] | None:
+        with self._session_factory() as session:
+            agent_run = session.get(AgentRunRecord, run_id)
+            if agent_run is None:
+                return None
+            package = session.scalar(
+                select(PolicyPackageRecord).where(PolicyPackageRecord.run_id == run_id)
+            )
+            proposals = session.scalars(
+                select(FieldDefinitionProposalRecord)
+                .where(FieldDefinitionProposalRecord.run_id == run_id)
+                .order_by(FieldDefinitionProposalRecord.created_at)
+            ).all()
+            reviews = session.scalars(
+                select(FieldDefinitionReviewRecord)
+                .join(FieldDefinitionProposalRecord)
+                .where(FieldDefinitionProposalRecord.run_id == run_id)
+                .order_by(FieldDefinitionReviewRecord.created_at)
+            ).all()
+            return {
+                "agent_run": agent_run.payload,
+                "policy_package": package.payload if package is not None else None,
+                "field_definition_proposals": [
+                    proposal.payload for proposal in proposals
+                ],
+                "field_definition_reviews": [review.payload for review in reviews],
+            }
+
     def get_policy_package(self, policy_id: str) -> dict[str, Any] | None:
         with self._session_factory() as session:
             record = session.get(PolicyPackageRecord, policy_id)
             return record.payload if record is not None else None
+
+    def get_approved_policy_package(self, policy_id: str) -> dict[str, Any] | None:
+        with self._session_factory() as session:
+            record = session.get(PolicyPackageRecord, policy_id)
+            if record is None or record.review_status != "approved":
+                return None
+            return record.payload
+
+    def list_approved_policy_packages(self) -> list[dict[str, Any]]:
+        statement: Select[tuple[PolicyPackageRecord]] = (
+            select(PolicyPackageRecord)
+            .where(PolicyPackageRecord.review_status == "approved")
+            .order_by(
+                PolicyPackageRecord.policy_family_id,
+                PolicyPackageRecord.version.desc(),
+            )
+        )
+        with self._session_factory() as session:
+            return [record.payload for record in session.scalars(statement)]
+
+    def list_field_definition_reviews(
+        self,
+        *,
+        status: str | None = None,
+        run_id: str | None = None,
+        limit: int = 100,
+    ) -> list[dict[str, Any]]:
+        statement: Select[tuple[FieldDefinitionReviewRecord]] = select(
+            FieldDefinitionReviewRecord
+        )
+        if run_id is not None:
+            statement = statement.join(FieldDefinitionProposalRecord).where(
+                FieldDefinitionProposalRecord.run_id == run_id
+            )
+        if status is not None:
+            statement = statement.where(FieldDefinitionReviewRecord.status == status)
+        statement = statement.order_by(
+            FieldDefinitionReviewRecord.created_at.desc()
+        ).limit(limit)
+        with self._session_factory() as session:
+            return [record.payload for record in session.scalars(statement)]
+
+    def list_admin_policy_packages(
+        self,
+        *,
+        review_status: str | None = None,
+        run_id: str | None = None,
+        limit: int = 100,
+    ) -> list[dict[str, Any]]:
+        statement: Select[tuple[PolicyPackageRecord]] = select(PolicyPackageRecord)
+        if review_status is not None:
+            statement = statement.where(
+                PolicyPackageRecord.review_status == review_status
+            )
+        if run_id is not None:
+            statement = statement.where(PolicyPackageRecord.run_id == run_id)
+        statement = statement.order_by(PolicyPackageRecord.created_at.desc()).limit(
+            limit
+        )
+        with self._session_factory() as session:
+            return [record.payload for record in session.scalars(statement)]
+
+    def approve_field_definition_review(
+        self,
+        review_id: str,
+        *,
+        approved_field: FieldDefinition | None = None,
+        review_note: str | None = None,
+    ) -> dict[str, Any]:
+        with self._session_factory.begin() as session:
+            review = session.get(FieldDefinitionReviewRecord, review_id)
+            if review is None:
+                raise ReviewNotFound(review_id)
+            if review.status != "pending":
+                raise ReviewConflict("Field definition review is already completed.")
+
+            proposal = session.get(
+                FieldDefinitionProposalRecord,
+                review.proposal_id,
+            )
+            if proposal is None:
+                raise ReviewNotFound(review.proposal_id)
+
+            original_field = FieldDefinition.model_validate(
+                proposal.payload["proposed_field"]
+            )
+            selected_field = approved_field or original_field
+            selected_field = selected_field.model_copy(
+                update={"review_status": "approved"}
+            )
+            reviewed_at = datetime.now(timezone.utc)
+            review_payload = {
+                **review.payload,
+                "status": "approved",
+                "approved_field": selected_field.model_dump(mode="json"),
+                "review_note": review_note,
+                "reviewed_at": reviewed_at.isoformat(),
+            }
+            review.status = "approved"
+            review.payload = review_payload
+            review.reviewed_at = reviewed_at
+            proposal.review_status = "approved"
+
+            package = session.scalar(
+                select(PolicyPackageRecord).where(
+                    PolicyPackageRecord.run_id == proposal.run_id
+                )
+            )
+            if package is not None:
+                package.payload = _replace_policy_field(
+                    package.payload,
+                    old_key=original_field.key,
+                    approved_field=selected_field,
+                )
+            return review_payload
+
+    def reject_field_definition_review(
+        self,
+        review_id: str,
+        *,
+        review_note: str | None = None,
+    ) -> dict[str, Any]:
+        with self._session_factory.begin() as session:
+            review = session.get(FieldDefinitionReviewRecord, review_id)
+            if review is None:
+                raise ReviewNotFound(review_id)
+            if review.status != "pending":
+                raise ReviewConflict("Field definition review is already completed.")
+
+            proposal = session.get(
+                FieldDefinitionProposalRecord,
+                review.proposal_id,
+            )
+            if proposal is None:
+                raise ReviewNotFound(review.proposal_id)
+
+            reviewed_at = datetime.now(timezone.utc)
+            review_payload = {
+                **review.payload,
+                "status": "rejected",
+                "approved_field": None,
+                "review_note": review_note,
+                "reviewed_at": reviewed_at.isoformat(),
+            }
+            review.status = "rejected"
+            review.payload = review_payload
+            review.reviewed_at = reviewed_at
+            proposal.review_status = "rejected"
+            return review_payload
+
+    def approve_policy_package(self, policy_id: str) -> dict[str, Any]:
+        return self._set_policy_review_status(policy_id, "approved")
+
+    def reject_policy_package(self, policy_id: str) -> dict[str, Any]:
+        return self._set_policy_review_status(policy_id, "rejected")
+
+    def _set_policy_review_status(
+        self,
+        policy_id: str,
+        status: str,
+    ) -> dict[str, Any]:
+        with self._session_factory.begin() as session:
+            package = session.get(PolicyPackageRecord, policy_id)
+            if package is None:
+                raise PolicyPackageNotFound(policy_id)
+            if package.review_status != "pending":
+                raise ReviewConflict("Policy package review is already completed.")
+
+            if status == "approved":
+                proposals = session.scalars(
+                    select(FieldDefinitionProposalRecord).where(
+                        FieldDefinitionProposalRecord.run_id == package.run_id
+                    )
+                ).all()
+                if any(proposal.review_status != "approved" for proposal in proposals):
+                    raise ReviewConflict(
+                        "All field definition reviews must be approved before publish."
+                    )
+
+            reviewed_at = datetime.now(timezone.utc).isoformat()
+            payload = deepcopy(package.payload)
+            payload["review"] = {
+                "status": status,
+                "reviewed_at": reviewed_at,
+            }
+            package.review_status = status
+            package.payload = payload
+            return payload
+
+    def list_approved_field_definitions(self) -> list[FieldDefinition]:
+        statement: Select[tuple[FieldDefinitionReviewRecord]] = select(
+            FieldDefinitionReviewRecord
+        ).where(FieldDefinitionReviewRecord.status == "approved")
+        definitions: dict[str, FieldDefinition] = {}
+        with self._session_factory() as session:
+            for record in session.scalars(statement):
+                approved_field = record.payload.get("approved_field")
+                if isinstance(approved_field, dict):
+                    definition = FieldDefinition.model_validate(approved_field)
+                    definitions[definition.key] = definition
+        return list(definitions.values())
 
     def get_latest_approved_policy(
         self,
@@ -136,3 +389,57 @@ def _review_record(review: FieldDefinitionReview) -> FieldDefinitionReviewRecord
         payload=review.model_dump(mode="json"),
         reviewed_at=review.reviewed_at,
     )
+
+
+class ReviewNotFound(LookupError):
+    pass
+
+
+class PolicyPackageNotFound(LookupError):
+    pass
+
+
+class ReviewConflict(RuntimeError):
+    pass
+
+
+def _replace_policy_field(
+    package: dict[str, Any],
+    *,
+    old_key: str,
+    approved_field: FieldDefinition,
+) -> dict[str, Any]:
+    updated = deepcopy(package)
+    fields = updated.get("required_profile_fields", [])
+    replacement = approved_field.model_dump(mode="json")
+    replaced_fields: list[dict[str, Any]] = []
+    for field in fields:
+        candidate = replacement if field.get("key") == old_key else field
+        if not any(item.get("key") == candidate.get("key") for item in replaced_fields):
+            replaced_fields.append(candidate)
+    updated["required_profile_fields"] = replaced_fields
+    updated["eligibility_rule"] = _replace_rule_field(
+        updated.get("eligibility_rule"),
+        old_key,
+        approved_field.key,
+    )
+    for change in updated.get("changes", []):
+        if change.get("field") == old_key:
+            change["field"] = approved_field.key
+            change["label"] = approved_field.label
+    return updated
+
+
+def _replace_rule_field(rule: Any, old_key: str, new_key: str) -> Any:
+    if not isinstance(rule, dict):
+        return rule
+    updated = deepcopy(rule)
+    if updated.get("field") == old_key:
+        updated["field"] = new_key
+    for operator in ("and", "or"):
+        if isinstance(updated.get(operator), list):
+            updated[operator] = [
+                _replace_rule_field(child, old_key, new_key)
+                for child in updated[operator]
+            ]
+    return updated

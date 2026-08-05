@@ -36,19 +36,25 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000
 
 - `GET /health`가 `{"status":"ok"}`를 반환한다.
 - 승인 정책 fixture 조회 API가 실행된다.
+- `POST /api/agent-runs`가 LangGraph를 실행하고 결과를 DB에 저장한다.
+- `GET /api/agent-runs/{run_id}`가 저장된 AgentRun을 조회한다.
+- FieldDefinitionReview 목록·승인·수정·반려 API가 DB 검토 상태를 변경한다.
+- AgentRun 목록과 실행별 정책·필드 제안·검토 묶음 조회 API를 제공한다.
+- 관리자 PolicyPackage 목록·상세 API는 pending/rejected 상태도 조회할 수 있다.
+- PolicyPackage 승인·반려 API가 검토 완료 상태를 저장한다.
+- 연결된 모든 field review가 승인된 PolicyPackage만 시민 조회 API에 공개된다.
+- FastAPI lifespan에서 SQLAlchemy schema를 초기화한다.
 - OpenAI client는 Agent 요청 전에는 외부 API를 호출하지 않는다.
 - 전체 백엔드 자동 테스트, Ruff와 formatter 검증을 통과한 상태에서 전달한다.
 
 아직 실제 배포 기능으로 간주하면 안 되는 항목:
 
-- `POST /api/agent-runs` 실제 실행 API
-- FastAPI startup과 DB schema/repository 연결
-- 관리자 승인·수정·반려 API
-- 승인 후 Publish와 실제 정책 목록 DB 조회
 - PostgreSQL 서버를 사용한 live integration test
+- 관리자 mutation API의 운영 인증·접근 제한
 
 초기 Docker smoke는 위 미구현 항목을 기다리지 않고 `/health` 기준으로 진행할
-수 있다. 이후 백엔드 API가 추가되면 같은 이미지 구조에서 통합 검증한다.
+수 있다. PostgreSQL 연결 후에는 Agent 실행부터 검토와 Publish까지 같은 이미지에서
+통합 검증한다.
 
 ## Docker build context and paths
 
@@ -120,11 +126,17 @@ repository를 소비한다.
 - 시민별 정책 판정 결과
 - 시민의 민감 속성
 
-현재 SQLAlchemy 모델은 PostgreSQL dialect DDL compile까지 검증됐다. PostgreSQL
-live 연결, schema initialization과 migration 방식은 실제 Agent API 연결 단계에서
-다시 확인한다.
+현재 FastAPI startup은 SQLAlchemy schema를 초기화하며 PostgreSQL dialect DDL
+compile까지 검증됐다. PostgreSQL live 연결과 운영 migration 방식은 AWS DB 연결
+단계에서 다시 확인한다.
 
 ## Container verification
+
+### Admin Codex next action
+
+Dockerfile과 PostgreSQL 실행 환경을 준비한 뒤 아래 검증 목록을 수행하고, 마지막에
+`backend/scripts/smoke_agent_review_publish.py`를 격리된 DB에 실행한다. 결과와 실패
+지점을 Admin Work log에 기록한 후 원래 관리자 UI·통합 작업으로 복귀한다.
 
 관리자·통합 담당은 최소한 다음을 실제로 확인하고 자신의 Work log에 기록한다.
 
@@ -134,7 +146,27 @@ live 연결, schema initialization과 migration 방식은 실제 Agent API 연�
 4. `/health` HTTP 200과 응답 body 확인
 5. 현재 fallback 정책 API가 필요하면 `demo-data` 포함 여부 확인
 6. container 종료 후 secret과 시민 데이터가 log에 남지 않았는지 확인
-7. 실제 API가 병합된 뒤 PostgreSQL 연결과 관리자 API smoke 재실행
+7. Agent API 실행 결과가 DB에 저장되고 AgentRun을 다시 조회할 수 있는지 확인
+8. PostgreSQL 연결과 관리자 API가 준비되면 관련 smoke 재실행
+
+격리된 배포 DB에서 전체 API 흐름은 저장소 루트 기준으로 다음 스크립트를 사용한다.
+이 스크립트는 실제 AgentRun과 검토·승인 데이터를 생성하므로 운영 DB에는 실행하지
+않는다.
+
+```powershell
+$env:BACKEND_BASE_URL="https://배포된-백엔드"
+$env:SMOKE_NOTICE_URL="https://www.gangnam.go.kr/notice/view.do?id=61922"
+$env:SMOKE_ALLOW_MUTATIONS="true"
+python backend/scripts/smoke_agent_review_publish.py
+```
+
+이전 승인 정책과의 diff까지 확인할 때만 `SMOKE_PREVIOUS_POLICY_ID`를 추가한다. 성공
+결과에는 `run_id`, `policy_id`, 승인한 field review 목록과 최종 `approved` 상태가
+출력된다.
+
+관리자 승인·반려 endpoint는 데모 통합용 최소 API이며 애플리케이션 자체 인증을 아직
+포함하지 않는다. AWS에서 공용 인터넷에 노출하기 전 관리자 경로에 인증 또는 동등한
+접근 제한을 적용하고, 시민 PWA에는 승인 정책 GET endpoint만 제공한다.
 
 실행하지 않은 PostgreSQL, OpenAI, AWS 검증을 성공했다고 기록하지 않는다.
 

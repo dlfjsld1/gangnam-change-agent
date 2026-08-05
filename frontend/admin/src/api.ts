@@ -34,11 +34,11 @@ export async function submitReview(
   action: ReviewStatus | "edit",
   field: FieldDefinition,
 ): Promise<void> {
-  const body = action === "edit" ? JSON.stringify({ approved_field: field }) : undefined;
-  const endpointAction = action === "approved" ? "approve" : action === "rejected" ? "reject" : action;
+  const body = JSON.stringify(action === "edit" ? { approved_field: field } : {});
+  const endpointAction = action === "rejected" ? "reject" : "approve";
   await request(`/api/field-definition-reviews/${encodeURIComponent(reviewId)}/${endpointAction}`, {
     method: "POST",
-    headers: body ? { "Content-Type": "application/json" } : undefined,
+    headers: { "Content-Type": "application/json" },
     body,
   });
 }

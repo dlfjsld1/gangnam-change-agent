@@ -2,10 +2,10 @@
 
 ## Current status
 
-- Current milestone: 실제 Agent 실행 API
-- Working: health API, 승인 정책 fixture API, 공통 계약, 공식 게시판 수집, HTML·PDF·HWPX 추출, 최후 복구용 OpenAI 이미지 OCR adapter, 동일 문서 변형 교차 검증, 구조화 정책 후보와 PolicyPackage 조립, Field Registry 해석, Human Review 결과 생성, LangGraph 실행 흐름과 AgentRun 로그 누적, SQLite/PostgreSQL 공용 저장소 계층
-- In progress: LangGraph를 호출하는 실제 Agent 실행 API
-- Not implemented: 실제 Agent 실행 API, 관리자 승인 Publish
+- Current milestone: PostgreSQL 배포 통합 준비
+- Working: health API, 실제 Agent 실행·조회 API, 공통 계약, 공식 게시판 수집, HTML·PDF·HWPX 추출, 최후 복구용 OpenAI 이미지 OCR adapter, 동일 문서 변형 교차 검증, 구조화 정책 후보와 PolicyPackage 조립, Field Registry 해석, Human Review 결과 생성, LangGraph 실행 흐름과 AgentRun 로그 누적, SQLite/PostgreSQL 공용 저장소 계층, 관리자 실행·검토·정책 목록과 상세 조회 API, 관리자 필드 검토 API, 정책 승인·반려와 승인 정책 Publish
+- In progress: 관리자·통합 담당의 컨테이너와 PostgreSQL 연결 지원, 배포 전체 흐름 smoke 준비
+- Not implemented: PostgreSQL live integration, 관리자 API 인증·접근 제한
 - Blockers: none
 
 ## Next actions
@@ -22,7 +22,11 @@
 - [x] LangGraph 전체 노드·도구 실행 로그를 AgentRun에 누적한다.
 - [x] 같은 정책 계열의 이전 공고와 신규 공고를 비교해 구조화된 diff를 생성한다.
 - [x] 실행·정책 후보·검토 상태를 저장소 인터페이스 뒤에 영속화한다.
-- [ ] LangGraph를 호출하고 결과를 반환하는 실제 Agent 실행 API를 추가한다.
+- [x] LangGraph를 호출하고 결과를 반환하는 실제 Agent 실행 API를 추가한다.
+- [x] FieldDefinitionReview 승인·수정·반려 API를 저장소와 연결한다.
+- [x] 승인된 PolicyPackage만 시민 API에 공개하도록 Publish 흐름을 연결한다.
+- [x] 관리자 화면용 AgentRun·검토·PolicyPackage 목록과 실행 상세 조회 API를 연결한다.
+- [ ] 배포 PostgreSQL에서 Agent 실행·검토·Publish smoke를 수행한다.
 
 ## Completion criteria
 
@@ -46,6 +50,75 @@
 - docs/contracts/field-definition-proposal.schema.json
 
 ## Change history
+
+### 2026-08-05 — 관리자 화면용 조회 API
+
+#### Summary
+
+관리자 화면이 ID를 미리 알지 않아도 작업 대상을 찾을 수 있도록 AgentRun 목록, 상태별 FieldDefinitionReview 목록, 공개 상태와 무관한 관리자 PolicyPackage 목록·상세와 실행별 정책·제안·검토 묶음 조회 API를 추가했다. 시민 정책 조회는 기존대로 승인된 package만 반환한다.
+
+#### Contract impact
+
+`docs/contracts/api.md`에 additive 관리자 조회 endpoint와 query filter, 실행 상세 응답을 추가했다. 공통 JSON Schema와 시민 데이터 경계는 변경하지 않았다.
+
+#### Validation
+
+- ruff check: passed
+- ruff format --check: passed
+- pytest: 73 passed
+- SQLite status/run_id 필터와 실행 상세 join: passed
+- API query 전달, pending package 조회, 404와 잘못된 filter/limit 422: passed
+
+### 2026-08-05 — 배포 Agent·검토·Publish smoke 준비
+
+#### Summary
+
+격리된 배포 DB를 대상으로 실제 Agent 실행, 생성된 FieldDefinitionReview 승인, PolicyPackage 승인과 시민 공개 조회를 순서대로 검증하는 재현 스크립트를 추가했다. 실수로 운영 데이터를 변경하지 않도록 `SMOKE_ALLOW_MUTATIONS=true`를 명시한 경우에만 실행된다.
+
+#### Validation
+
+- API 호출 순서와 이전 정책 ID 전달 unit test: passed
+- PolicyPackage 미생성 시 중단 경로: passed
+- PostgreSQL live smoke: 관리자·통합 담당의 컨테이너와 DB 준비 전이므로 미실행
+
+### 2026-08-05 — 관리자 검토와 정책 Publish
+
+#### Summary
+
+FieldDefinitionReview 목록·승인·수정·반려 API와 PolicyPackage 승인·반려 API를 DB repository에 연결했다. 필드 승인 시 확정된 canonical key를 필수 프로필 필드, 재귀 EligibilityRule과 변경 항목에 반영한다. 연결된 모든 필드 검토가 승인된 정책만 Publish할 수 있으며 시민 조회 API는 승인된 DB 정책을 우선 제공하고 DB에 승인 정책이 없을 때만 데모 fixture를 사용한다.
+
+#### Contract impact
+
+`docs/contracts/api.md`에 additive 관리자 API와 상태 전이·Publish 조건을 명시했다. 기존 JSON Schema의 pending/approved/rejected 상태를 그대로 사용하며 시민 프로필 데이터는 입력·저장하지 않는다.
+
+#### Validation
+
+- ruff check: passed
+- ruff format --check: passed
+- pytest: 67 passed
+- FieldDefinitionReview 승인·반려 JSON Schema validation: passed
+- canonical field key 재작성과 재귀 EligibilityRule validation: passed
+- 미승인·반려 field가 있는 PolicyPackage Publish 차단: passed
+- 승인된 DB 정책 우선 공개와 fixture 차단 경로: passed
+
+### 2026-08-05 — 실제 Agent 실행·조회 API
+
+#### Summary
+
+`POST /api/agent-runs`가 허용된 강남구 공고 URL과 선택적인 이전 승인 정책 ID를 받아 LangGraph를 실행한다. 실행 결과의 AgentRun, PolicyPackage 후보, FieldDefinitionProposal, FieldDefinitionReview를 DB에 저장하고 `GET /api/agent-runs/{run_id}`로 조회한다. FastAPI lifespan에서 DB schema를 초기화하며 POST CORS를 허용한다.
+
+#### Contract impact
+
+`docs/contracts/api.md`에 additive 실행·조회 API를 추가했다. 시민 프로필과 시민별 판정 결과는 요청·응답·DB에 포함하지 않는다.
+
+#### Validation
+
+- ruff check: passed
+- ruff format --check: passed
+- pytest: 60 passed
+- 허용되지 않은 notice host 422, 미승인 이전 정책 404 경로 passed
+- Agent 실행 결과와 Field Review repository 저장 경로 passed
+- FastAPI lifespan SQLite schema 생성과 `/health` HTTP 200 smoke passed
 
 ### 2026-08-05 — SQLite/PostgreSQL 공용 저장소 계층
 
