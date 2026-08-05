@@ -148,108 +148,223 @@ resource "aws_ecr_repository" "backend" {
   }
 }
 
-resource "aws_apprunner_vpc_connector" "main" {
-  vpc_connector_name = var.project_name
-  subnets            = aws_subnet.private[*].id
-  security_groups    = [aws_security_group.app_runner.id]
+resource "aws_subnet" "public_second" {
+  vpc_id                  = aws_vpc.main.id
+  availability_zone       = data.aws_availability_zones.available.names[1]
+  cidr_block              = cidrsubnet(aws_vpc.main.cidr_block, 8, 101)
+  map_public_ip_on_launch = true
+
+  tags = {
+    Name = "${var.project_name}-public-2"
+  }
 }
 
-data "aws_iam_policy_document" "ecr_assume" {
+resource "aws_route_table_association" "public_second" {
+  subnet_id      = aws_subnet.public_second.id
+  route_table_id = aws_route_table.public.id
+}
+
+resource "aws_security_group" "load_balancer" {
+  name        = "${var.project_name}-load-balancer"
+  description = "Public HTTP entrypoint for CloudFront"
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+resource "aws_vpc_security_group_ingress_rule" "backend_from_load_balancer" {
+  security_group_id            = aws_security_group.app_runner.id
+  referenced_security_group_id = aws_security_group.load_balancer.id
+  ip_protocol                  = "tcp"
+  from_port                    = 8000
+  to_port                      = 8000
+}
+
+resource "aws_cloudwatch_log_group" "backend" {
+  name              = "/ecs/${var.project_name}-backend"
+  retention_in_days = 7
+}
+
+data "aws_iam_policy_document" "ecs_tasks_assume" {
   statement {
     actions = ["sts:AssumeRole"]
 
     principals {
       type        = "Service"
-      identifiers = ["build.apprunner.amazonaws.com"]
+      identifiers = ["ecs-tasks.amazonaws.com"]
     }
   }
 }
 
-resource "aws_iam_role" "ecr_access" {
-  name               = "${var.project_name}-ecr-access"
-  assume_role_policy = data.aws_iam_policy_document.ecr_assume.json
+resource "aws_iam_role" "ecs_execution" {
+  name               = "${var.project_name}-ecs-execution"
+  assume_role_policy = data.aws_iam_policy_document.ecs_tasks_assume.json
 }
 
-resource "aws_iam_role_policy_attachment" "ecr_access" {
-  role       = aws_iam_role.ecr_access.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSAppRunnerServicePolicyForECRAccess"
+resource "aws_iam_role_policy_attachment" "ecs_execution" {
+  role       = aws_iam_role.ecs_execution.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
-data "aws_iam_policy_document" "instance_assume" {
-  statement {
-    actions = ["sts:AssumeRole"]
-
-    principals {
-      type        = "Service"
-      identifiers = ["tasks.apprunner.amazonaws.com"]
-    }
-  }
-}
-
-resource "aws_iam_role" "instance" {
-  name               = "${var.project_name}-instance"
-  assume_role_policy = data.aws_iam_policy_document.instance_assume.json
-}
-
-data "aws_iam_policy_document" "database_url_secret" {
+data "aws_iam_policy_document" "ecs_database_url_secret" {
   statement {
     actions   = ["secretsmanager:GetSecretValue"]
     resources = [aws_secretsmanager_secret.database_url.arn]
   }
 }
 
-resource "aws_iam_role_policy" "database_url_secret" {
+resource "aws_iam_role_policy" "ecs_database_url_secret" {
   name   = "read-database-url"
-  role   = aws_iam_role.instance.id
-  policy = data.aws_iam_policy_document.database_url_secret.json
+  role   = aws_iam_role.ecs_execution.id
+  policy = data.aws_iam_policy_document.ecs_database_url_secret.json
 }
 
-resource "aws_apprunner_service" "backend" {
-  count = var.deploy_service ? 1 : 0
+resource "aws_ecs_cluster" "main" {
+  name = var.project_name
+}
 
-  service_name = "${var.project_name}-backend"
+resource "aws_lb" "backend" {
+  name               = "gangnam-change-agent"
+  internal           = false
+  load_balancer_type = "application"
+  security_groups    = [aws_security_group.load_balancer.id]
+  subnets            = [aws_subnet.public.id, aws_subnet.public_second.id]
+}
 
-  source_configuration {
-    auto_deployments_enabled = true
+resource "aws_lb_target_group" "backend" {
+  name        = "gangnam-change-agent"
+  port        = 8000
+  protocol    = "HTTP"
+  target_type = "ip"
+  vpc_id      = aws_vpc.main.id
 
-    authentication_configuration {
-      access_role_arn = aws_iam_role.ecr_access.arn
-    }
+  health_check {
+    path                = "/health"
+    healthy_threshold   = 2
+    unhealthy_threshold = 3
+    timeout             = 5
+    interval            = 15
+    matcher             = "200"
+  }
+}
 
-    image_repository {
-      image_identifier      = "${aws_ecr_repository.backend.repository_url}:${var.image_tag}"
-      image_repository_type = "ECR"
+resource "aws_lb_listener" "backend" {
+  load_balancer_arn = aws_lb.backend.arn
+  port              = 80
+  protocol          = "HTTP"
 
-      image_configuration {
-        port = "8000"
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.backend.arn
+  }
+}
 
-        runtime_environment_variables = {
-          BACKEND_CORS_ORIGINS = var.backend_cors_origins
+resource "aws_ecs_task_definition" "backend" {
+  family                   = "${var.project_name}-backend"
+  requires_compatibilities = ["FARGATE"]
+  network_mode             = "awsvpc"
+  cpu                      = 512
+  memory                   = 1024
+  execution_role_arn       = aws_iam_role.ecs_execution.arn
+
+  container_definitions = jsonencode([
+    {
+      name      = "backend"
+      image     = "${aws_ecr_repository.backend.repository_url}:${var.image_tag}"
+      essential = true
+      portMappings = [
+        {
+          containerPort = 8000
+          protocol      = "tcp"
         }
-
-        runtime_environment_secrets = {
-          DATABASE_URL = aws_secretsmanager_secret.database_url.arn
+      ]
+      environment = [
+        {
+          name  = "BACKEND_CORS_ORIGINS"
+          value = var.backend_cors_origins
+        }
+      ]
+      secrets = [
+        {
+          name      = "DATABASE_URL"
+          valueFrom = aws_secretsmanager_secret.database_url.arn
+        }
+      ]
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          awslogs-group         = aws_cloudwatch_log_group.backend.name
+          awslogs-region        = var.aws_region
+          awslogs-stream-prefix = "backend"
         }
       }
     }
-  }
+  ])
+}
 
-  instance_configuration {
-    cpu               = "1 vCPU"
-    memory            = "2 GB"
-    instance_role_arn = aws_iam_role.instance.arn
-  }
+resource "aws_ecs_service" "backend" {
+  name            = "${var.project_name}-backend"
+  cluster         = aws_ecs_cluster.main.id
+  task_definition = aws_ecs_task_definition.backend.arn
+  desired_count   = 1
+  launch_type     = "FARGATE"
 
   network_configuration {
-    egress_configuration {
-      egress_type       = "VPC"
-      vpc_connector_arn = aws_apprunner_vpc_connector.main.arn
+    subnets         = aws_subnet.private[*].id
+    security_groups = [aws_security_group.app_runner.id]
+  }
+
+  load_balancer {
+    target_group_arn = aws_lb_target_group.backend.arn
+    container_name   = "backend"
+    container_port   = 8000
+  }
+
+  depends_on = [aws_lb_listener.backend]
+}
+
+resource "aws_cloudfront_distribution" "backend" {
+  enabled = true
+
+  origin {
+    domain_name = aws_lb.backend.dns_name
+    origin_id   = "backend-alb"
+
+    custom_origin_config {
+      http_port              = 80
+      https_port             = 443
+      origin_protocol_policy = "http-only"
+      origin_ssl_protocols   = ["TLSv1.2"]
     }
   }
 
-  health_check_configuration {
-    path     = "/health"
-    protocol = "HTTP"
+  default_cache_behavior {
+    allowed_methods        = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+    cached_methods         = ["GET", "HEAD"]
+    target_origin_id       = "backend-alb"
+    viewer_protocol_policy = "redirect-to-https"
+    cache_policy_id        = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
+  }
+
+  restrictions {
+    geo_restriction {
+      restriction_type = "none"
+    }
+  }
+
+  viewer_certificate {
+    cloudfront_default_certificate = true
   }
 }
-

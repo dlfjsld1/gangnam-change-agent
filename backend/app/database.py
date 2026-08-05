@@ -10,7 +10,7 @@ from sqlalchemy.pool import StaticPool
 
 from app.db_models import Base
 
-DEFAULT_DATABASE_URL = "sqlite:///./storage/gangnam-change-agent.db"
+DEFAULT_DATABASE_URL = "sqlite:///./gangnam-change-agent.db"
 
 
 def configured_database_url() -> str:

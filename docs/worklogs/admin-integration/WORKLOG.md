@@ -2,6 +2,8 @@
 
 ## Current status
 
+- AWS backend deployed: ECS Fargate + ALB + CloudFront, https://d25409t9vvq1vj.cloudfront.net
+
 - Current milestone: fixture 기반 관리자 검토 화면
 - Working: Vite 앱, FieldDefinitionReview 목록·상세, evidence·canonical field 후보, 승인·수정·반려, AgentRun 로그, API 실패 fallback
 - In progress: 실제 Backend 관리자 API 연결
@@ -86,3 +88,20 @@ Private RDS PostgreSQL, Secrets Manager, ECR, App Runner VPC Connector와 외부
 - terraform validate: passed
 - docker build (backend/Dockerfile): passed
 - 실제 AWS plan/apply: 미실행, AWS 계정과 배포 origin 필요
+
+### 2026-08-05 — 서울 리전 ECS backend 배포
+
+#### Summary
+
+서울 리전에서 지원되지 않는 App Runner 대신 기존 VPC, private RDS, ECR을 재사용하는 ECS Fargate 배포로 전환했다. CloudFront HTTPS, public ALB, private ECS task 경로로 backend를 배포하고 Secrets Manager의 DATABASE_URL로 PostgreSQL에 연결했다.
+
+#### Verification
+
+- Terraform validate: passed
+- Terraform plan after apply: No changes
+- backend pytest: 54 passed
+- Docker build and ECR push: passed
+- ECS desired/running: 1/1, steady state
+- ALB target health: healthy
+- HTTPS health and API smoke: HTTP 200
+- CloudWatch: Alembic PostgreSQL migration and Uvicorn startup passed

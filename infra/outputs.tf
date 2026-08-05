@@ -19,7 +19,6 @@ output "database_url_secret_arn" {
   value = aws_secretsmanager_secret.database_url.arn
 }
 
-output "app_runner_url" {
-  value = var.deploy_service ? "https://${aws_apprunner_service.backend[0].service_url}" : null
+output "backend_url" {
+  value = "https://${aws_cloudfront_distribution.backend.domain_name}"
 }
-

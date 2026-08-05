@@ -83,3 +83,14 @@
 - Reason: 로컬 개발 설정은 가볍게 유지하면서 배포 환경의 동시 접근과 영속성을 지원하기 위함이다.
 - Affected areas: backend, frontend/admin, infra
 - Contract impact: 공통 JSON Schema 변경 없음. 실제 Agent 실행 및 관리자 API는 같은 저장소 계층을 사용한다.
+
+## D-008 — 서울 리전 ECS Fargate 배포
+
+- Date: 2026-08-05
+- Status: accepted
+- Decision: 서울 리전의 private RDS와 ECR을 유지하고 backend 실행 계층은 ECS Fargate를 사용한다. 공개 API는 CloudFront HTTPS에서 public ALB를 거쳐 private ECS task로 전달한다.
+- Rejected: App Runner는 서울 리전을 지원하지 않아 사용하지 않는다.
+- Security: ECS task만 RDS 5432에 접근하며 DATABASE_URL은 Secrets Manager에서 task execution role로 주입한다.
+- Reason: 기존 서울 VPC·RDS·ECR을 재사용하면서 HTTPS endpoint와 private database 연결을 제공하기 위함이다.
+- Affected areas: backend, infra
+- Contract impact: 없음
