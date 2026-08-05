@@ -14,7 +14,14 @@ import { loadApprovedPolicyPackages } from "./policy/policyApi";
 import type { PolicyPackage } from "./policy/policyPackage";
 import { recordAnswer } from "./profile/answerProfile";
 import type { FieldDefinition, LocalProfile } from "./profile/dynamicProfile";
-import { clearProfile, loadProfile, saveProfile } from "./profile/profileStore";
+import {
+  clearProfile,
+  loadDemoProfile,
+  loadProfile,
+  saveDemoProfile,
+  saveProfile,
+} from "./profile/profileStore";
+import type { DemoProfileName } from "./profile/profileStore";
 import policyFixture from "../../../demo-data/approved-policy.json";
 import userA from "../../../demo-data/user-a.json";
 import userB from "../../../demo-data/user-b.json";
@@ -25,6 +32,12 @@ const fixturePolicies = [policyFixture as PolicyPackage];
 const demoProfiles = {
   A: toLocalProfile(userA.profile),
   B: toLocalProfile(userB.profile),
+  C: {
+    residence: { value: "강남구", updatedAt: "2026-08-05", validUntil: "2027-08-05", source: "user_input", sensitivity: "medium" },
+    age: { value: 28, updatedAt: "2026-08-05", validUntil: "2027-08-05", source: "user_input", sensitivity: "low" },
+    employment_status: { value: "unemployed", updatedAt: "2026-08-05", validUntil: "2026-11-05", source: "user_input", sensitivity: "medium" },
+    military_service_status: { value: "completed", updatedAt: "2026-08-05", validUntil: "2027-08-05", source: "user_input", sensitivity: "medium" },
+  } satisfies LocalProfile,
 };
 
 function today(): string {
@@ -52,7 +65,7 @@ export function App() {
   const [hiddenPolicyIds, setHiddenPolicyIds] = useState<string[]>([]);
   const [favoritePolicyIds, setFavoritePolicyIds] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState("home");
-  const [demoProfileName, setDemoProfileName] = useState<"A" | "B" | undefined>();
+  const [demoProfileName, setDemoProfileName] = useState<DemoProfileName>();
   const [demoProfile, setDemoProfile] = useState<LocalProfile>();
   const [selectedPolicy, setSelectedPolicy] = useState<PolicyPackage>();
   const [onboardingMode, setOnboardingMode] = useState<"start" | "edit" | "preview">();
@@ -94,6 +107,7 @@ export function App() {
     const nextProfile = recordAnswer(activeProfile, field, value, today());
     try {
       if (demoProfileName) {
+        await saveDemoProfile(demoProfileName, nextProfile);
         setDemoProfile(nextProfile);
         return;
       }
@@ -149,7 +163,20 @@ export function App() {
     setOnboardingMode(undefined);
   }
 
+  async function selectDemoProfile(name: DemoProfileName) {
+    const savedProfile = await loadDemoProfile(name);
+    const nextProfile = savedProfile ?? demoProfiles[name];
+    if (!savedProfile) {
+      await saveDemoProfile(name, nextProfile);
+    }
+    setDemoProfileName(name);
+    setDemoProfile(nextProfile);
+    setActiveTab("home");
+    setOnboardingMode(undefined);
+  }
+
   return (
+    <>
     <main className="app-shell">
       {onboardingMode ? (
         <Onboarding
@@ -163,6 +190,7 @@ export function App() {
       ) : <>
       {activeTab === "profile" ? (
         <ProfilePage
+          key="profile"
           fields={(policies[0] ?? fixturePolicies[0]).required_profile_fields}
           onEdit={() => setOnboardingMode("edit")}
           onPreviewIntro={() => setOnboardingMode("preview")}
@@ -170,12 +198,23 @@ export function App() {
           profile={profile}
         />
       ) : <>
+      <section className="tab-page" key={activeTab}>
       <header className="hero">
         <div className="hero-topline">
           <p>강남 Change Agent</p>
-          <button aria-label="알림" className="icon-button" type="button">♧</button>
+          <span aria-hidden="true" className="header-icon"><BellIcon /></span>
         </div>
-        <h1>{activeTab === "favorites" ? `즐겨찾기 ${feedPolicies.length}개` : `나에게 관련된 변화 ${visiblePolicies.length}개`}</h1>
+        {activeTab === "favorites" ? (
+          <h1 className="count-hero-title">
+            <span>즐겨찾기</span>
+            <span className="hero-count"><strong>{feedPolicies.length}</strong>개</span>
+          </h1>
+        ) : (
+          <h1 className="count-hero-title">
+            <span>나에게 관련된 변화</span>
+            <span className="hero-count"><strong>{visiblePolicies.length}</strong>개</span>
+          </h1>
+        )}
         <p>{activeTab === "favorites" ? "별을 눌러 담아둔 공고예요." : "내 정보는 이 기기 안에서만 비교돼요."}</p>
       </header>
 
@@ -209,27 +248,59 @@ export function App() {
         {ready && policies.length === 0 && (
           <section className="empty-feed"><p>지금은 새로 확인할 변화가 없어요.</p></section>
         )}
-
-        {ready && (
-          <section className="demo-switcher" aria-label="데모 프로필 전환">
-            <p>발표용 데모 프로필</p>
-            <button aria-pressed={demoProfileName === "A"} onClick={() => { setDemoProfileName("A"); setDemoProfile(demoProfiles.A); }} type="button">사용자 A</button>
-            <button aria-pressed={demoProfileName === "B"} onClick={() => { setDemoProfileName("B"); setDemoProfile(demoProfiles.B); }} type="button">사용자 B</button>
-            <button aria-pressed={!demoProfileName} onClick={() => { setDemoProfileName(undefined); setDemoProfile(undefined); }} type="button">내 프로필</button>
-          </section>
-        )}
       </div>
+      </section>
       </>}
 
       <nav aria-label="주요 메뉴" className="bottom-nav">
-        <button aria-current={activeTab === "home" ? "page" : undefined} onClick={() => setActiveTab("home")} type="button">⌂<span>홈</span></button>
-        <button aria-current={activeTab === "favorites" ? "page" : undefined} onClick={() => setActiveTab("favorites")} type="button">★<span>즐겨찾기</span></button>
-        <button aria-current={activeTab === "profile" ? "page" : undefined} onClick={() => setActiveTab("profile")} type="button">♙<span>내 정보</span></button>
+        <button aria-current={activeTab === "home" ? "page" : undefined} onClick={() => setActiveTab("home")} type="button"><HomeIcon /><span>홈</span></button>
+        <button aria-current={activeTab === "favorites" ? "page" : undefined} onClick={() => setActiveTab("favorites")} type="button"><StarIcon /><span>즐겨찾기</span></button>
+        <button aria-current={activeTab === "profile" ? "page" : undefined} onClick={() => setActiveTab("profile")} type="button"><FamilyIcon /><span>내 정보</span></button>
       </nav>
       {selectedPolicy && <PolicyDetail policy={selectedPolicy} onClose={() => setSelectedPolicy(undefined)} />}
       </>}
     </main>
+    <DemoRemote activeProfile={demoProfileName} onSelect={selectDemoProfile} />
+    </>
   );
+}
+
+
+function DemoRemote(props: { activeProfile?: DemoProfileName; onSelect: (name: DemoProfileName) => Promise<void> }) {
+  return (
+    <aside aria-label="발표용 데모 리모컨" className="demo-remote">
+      <p>DEMO</p>
+      <strong>프로필 전환</strong>
+      {(["A", "B", "C"] as DemoProfileName[]).map((name) => (
+        <button
+          aria-pressed={props.activeProfile === name}
+          key={name}
+          onClick={() => void props.onSelect(name)}
+          type="button"
+        >사용자 {name}</button>
+      ))}
+    </aside>
+  );
+}
+
+
+function BellIcon() {
+  return <svg aria-hidden="true" className="line-icon bell-icon" fill="none" viewBox="0 0 24 24"><path d="M18 10a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 22h4" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" /></svg>;
+}
+
+
+function HomeIcon() {
+  return <svg aria-hidden="true" className="line-icon" fill="none" viewBox="0 0 24 24"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V10Z" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" /><path d="M9 21v-6h6v6" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" /></svg>;
+}
+
+
+function StarIcon() {
+  return <svg aria-hidden="true" className="line-icon" fill="none" viewBox="0 0 24 24"><path d="m12 3 2.7 5.5 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1-4.4-4.3 6.1-.9L12 3Z" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" /></svg>;
+}
+
+
+function FamilyIcon() {
+  return <svg aria-hidden="true" className="line-icon" fill="none" viewBox="0 0 24 24"><circle cx="8" cy="7.5" r="2.5" stroke="currentColor" strokeWidth="1.8" /><circle cx="16.5" cy="8.5" r="2" stroke="currentColor" strokeWidth="1.8" /><circle cx="12" cy="12.5" r="1.7" stroke="currentColor" strokeWidth="1.8" /><path d="M3.5 20c.4-3.1 2.1-4.7 4.5-4.7s4.1 1.6 4.5 4.7M13.3 20c.3-2.3 1.5-3.6 3.3-3.6s3 1.3 3.3 3.6M8.7 20c.2-2 1.4-3 3.3-3s3.1 1 3.3 3" stroke="currentColor" strokeLinecap="round" strokeWidth="1.8" /></svg>;
 }
 
 
@@ -243,7 +314,7 @@ function ProfilePage(props: {
   const fields = props.fields.filter((field) => field.review_status === "approved");
 
   return (
-    <section className="profile-page" aria-labelledby="profile-title">
+    <section className="profile-page tab-page" aria-labelledby="profile-title">
       <p className="profile-eyebrow">내 기기에만 저장됨</p>
       <h1 id="profile-title">내 정보</h1>
       <p className="profile-description">공고 조건을 비교하기 위해 저장한 정보예요.</p>
