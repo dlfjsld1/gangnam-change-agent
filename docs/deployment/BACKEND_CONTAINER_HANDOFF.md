@@ -39,6 +39,8 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000
 - `POST /api/agent-runs`가 LangGraph를 실행하고 결과를 DB에 저장한다.
 - `GET /api/agent-runs/{run_id}`가 저장된 AgentRun을 조회한다.
 - FieldDefinitionReview 목록·승인·수정·반려 API가 DB 검토 상태를 변경한다.
+- AgentRun 목록과 실행별 정책·필드 제안·검토 묶음 조회 API를 제공한다.
+- 관리자 PolicyPackage 목록·상세 API는 pending/rejected 상태도 조회할 수 있다.
 - PolicyPackage 승인·반려 API가 검토 완료 상태를 저장한다.
 - 연결된 모든 field review가 승인된 PolicyPackage만 시민 조회 API에 공개된다.
 - FastAPI lifespan에서 SQLAlchemy schema를 초기화한다.

@@ -49,7 +49,11 @@
 
 ## 관리자 최소 계약
 
+- GET /api/agent-runs
 - GET /api/field-definition-reviews
+- GET /api/admin/agent-runs/{run_id}
+- GET /api/admin/policy-packages
+- GET /api/admin/policy-packages/{policy_id}
 - POST /api/field-definition-reviews/{review_id}/approve
 - POST /api/field-definition-reviews/{review_id}/reject
 - GET /api/agent-runs/{run_id}
@@ -58,6 +62,39 @@
 
 `GET /api/agent-runs/{run_id}`는 저장된 AgentRun 한 건을 반환하고, 존재하지 않으면
 404를 반환한다.
+
+### 관리자 조회
+
+`GET /api/agent-runs`는 최신 실행부터 AgentRun 배열을 반환한다. 선택 query는 다음과
+같다.
+
+- `status`: AgentRun status 정확 일치
+- `review_required`: 검토 필요 여부
+- `limit`: 기본 50, 최대 100
+
+`GET /api/field-definition-reviews`는 최신 검토부터 반환하며 `status`, `run_id`,
+`limit`으로 필터링할 수 있다. `limit` 기본값은 100이고 최대 100이다.
+
+`GET /api/admin/policy-packages`는 공개 여부와 관계없이 관리자 검토용 PolicyPackage를
+최신 생성 순서로 반환한다. `review_status`, `run_id`, `limit`으로 필터링할 수 있다.
+시민용 `GET /api/policy-packages`와 달리 pending/rejected package를 포함할 수 있다.
+
+`GET /api/admin/policy-packages/{policy_id}`는 관리자용 package 한 건을 반환한다.
+승인되지 않은 package도 조회하며 존재하지 않으면 404를 반환한다.
+
+`GET /api/admin/agent-runs/{run_id}`는 관리자 상세 화면에 필요한 다음 실행 묶음을
+반환하며 실행이 없으면 404를 반환한다.
+
+```json
+{
+  "agent_run": {},
+  "policy_package": {},
+  "field_definition_proposals": [],
+  "field_definition_reviews": []
+}
+```
+
+이 관리자 조회 API도 시민 프로필이나 시민별 판정 결과를 반환하지 않는다.
 
 HumanHandoff 별도 API는 만들지 않는다. 사람 검토 필요 상태는 AgentRun의 review_required, review_reason, unresolved_fields로 전달한다.
 
