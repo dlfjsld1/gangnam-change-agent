@@ -6,7 +6,7 @@ from typing import Annotated, TypedDict
 from app.schemas.agent_run import AgentNodeLog, AgentRun
 from app.schemas.document_extraction import NoticeDocumentCorpus
 from app.schemas.field_definition import FieldDefinitionProposal, FieldDefinitionReview
-from app.schemas.policy_extraction import PolicyBuildResult, PolicyDraft
+from app.schemas.policy_extraction import EvidenceIssue, PolicyBuildResult, PolicyDraft
 from app.schemas.source_notice import SourceNotice
 from app.services.document_analysis import DocumentAnalysisResult
 from app.services.field_registry import FieldRegistry
@@ -44,6 +44,7 @@ class ChangeAgentState(TypedDict, total=False):
     policy_draft: PolicyDraft
     field_proposals: list[FieldDefinitionProposal]
     field_reviews: list[FieldDefinitionReview]
+    evidence_issues: list[EvidenceIssue]
     review_required: bool
     review_reason: str | None
     unresolved_fields: list[str]

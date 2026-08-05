@@ -3,6 +3,9 @@ from datetime import date
 from json import loads
 from pathlib import Path
 
+import pytest
+from jsonschema import Draft202012Validator, FormatChecker
+from referencing import Registry, Resource
 from sqlalchemy import func, inspect, select
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.schema import CreateTable
@@ -13,7 +16,7 @@ from app.db_models import (
     FieldDefinitionProposalRecord,
     FieldDefinitionReviewRecord,
 )
-from app.repositories.agent_repository import AgentRepository
+from app.repositories.agent_repository import AgentRepository, ReviewConflict
 from app.schemas.agent_run import AgentNodeLog, AgentRun
 from app.schemas.field_definition import (
     FieldDefinition,
@@ -101,6 +104,7 @@ def test_sqlite_repository_persists_agent_result_and_proposal(tmp_path: Path) ->
 
     assert repository.get_agent_run("run-1")["review_required"] is True
     assert repository.get_policy_package(package["policy_id"]) == package
+    assert repository.get_approved_policy_package(package["policy_id"]) is None
     with database.session_factory() as session:
         proposal_count = session.scalar(
             select(func.count()).select_from(FieldDefinitionProposalRecord)
@@ -117,6 +121,26 @@ def test_sqlite_repository_persists_agent_result_and_proposal(tmp_path: Path) ->
         "policy_packages",
         "source_notices",
     }
+
+    with database.session_factory.begin() as session:
+        review_record = session.get(
+            FieldDefinitionReviewRecord,
+            "run-1:new_condition",
+        )
+        assert review_record is not None
+        review_record.status = "approved"
+        review_record.payload = {
+            **review_record.payload,
+            "status": "approved",
+            "approved_field": {
+                **proposal.proposed_field.model_dump(mode="json"),
+                "review_status": "approved",
+            },
+        }
+
+    approved_definitions = repository.list_approved_field_definitions()
+    assert [definition.key for definition in approved_definitions] == ["new_condition"]
+    assert approved_definitions[0].review_status == "approved"
 
 
 def test_latest_policy_query_returns_only_approved_version(tmp_path: Path) -> None:
@@ -142,6 +166,7 @@ def test_latest_policy_query_returns_only_approved_version(tmp_path: Path) -> No
 
     assert latest is not None
     assert latest["policy_id"] == "demo-policy-v2"
+    assert repository.get_approved_policy_package("demo-policy-v2") == approved
 
 
 def test_failed_run_can_be_saved_without_notice_or_policy(tmp_path: Path) -> None:
@@ -165,6 +190,100 @@ def test_failed_run_can_be_saved_without_notice_or_policy(tmp_path: Path) -> Non
     assert repository.get_agent_run("run-failed")["status"] == "failed"
 
 
+def test_field_approval_rewrites_policy_and_enables_publish(tmp_path: Path) -> None:
+    database = Database(f"sqlite:///{tmp_path / 'agent.db'}")
+    database.create_schema()
+    repository = AgentRepository(database.session_factory)
+    package = deepcopy(APPROVED_POLICY)
+    package["policy_id"] = "policy-review"
+    package["review"] = {"status": "pending", "reviewed_at": None}
+    proposal = _proposal()
+    package["required_profile_fields"].append(
+        proposal.proposed_field.model_dump(mode="json")
+    )
+    package["eligibility_rule"] = {
+        "or": [
+            package["eligibility_rule"],
+            {"field": "new_condition", "operator": "exists", "value": True},
+        ]
+    }
+    repository.save_execution(
+        _agent_run("run-1", package["policy_id"]),
+        policy_package=package,
+        field_proposals=[proposal],
+        field_reviews=[_review(proposal)],
+    )
+    approved_field = proposal.proposed_field.model_copy(
+        update={"key": "canonical_condition", "label": "표준 조건"}
+    )
+
+    review = repository.approve_field_definition_review(
+        "run-1:new_condition",
+        approved_field=approved_field,
+        review_note="표준 필드로 승인",
+    )
+    published = repository.approve_policy_package(package["policy_id"])
+
+    assert review["status"] == "approved"
+    assert review["approved_field"]["review_status"] == "approved"
+    assert published["review"]["status"] == "approved"
+    assert published["eligibility_rule"]["or"][1]["field"] == "canonical_condition"
+    assert any(
+        field["key"] == "canonical_condition"
+        for field in published["required_profile_fields"]
+    )
+    assert repository.get_approved_policy_package(package["policy_id"]) == published
+    assert published in repository.list_approved_policy_packages()
+    _validate_contract(review, "FieldDefinitionReview")
+    _validate_contract(published, "PolicyPackage")
+
+
+def test_rejected_field_review_blocks_policy_publish(tmp_path: Path) -> None:
+    database = Database(f"sqlite:///{tmp_path / 'agent.db'}")
+    database.create_schema()
+    repository = AgentRepository(database.session_factory)
+    package = deepcopy(APPROVED_POLICY)
+    package["policy_id"] = "policy-rejected-field"
+    package["review"] = {"status": "pending", "reviewed_at": None}
+    proposal = _proposal()
+    repository.save_execution(
+        _agent_run("run-1", package["policy_id"]),
+        policy_package=package,
+        field_proposals=[proposal],
+        field_reviews=[_review(proposal)],
+    )
+
+    rejected = repository.reject_field_definition_review(
+        "run-1:new_condition",
+        review_note="근거 불충분",
+    )
+
+    assert rejected["status"] == "rejected"
+    with pytest.raises(ReviewConflict):
+        repository.approve_policy_package(package["policy_id"])
+    assert repository.get_approved_policy_package(package["policy_id"]) is None
+    _validate_contract(rejected, "FieldDefinitionReview")
+
+
+def test_policy_package_can_be_rejected_without_field_reviews(tmp_path: Path) -> None:
+    database = Database(f"sqlite:///{tmp_path / 'agent.db'}")
+    database.create_schema()
+    repository = AgentRepository(database.session_factory)
+    package = deepcopy(APPROVED_POLICY)
+    package["policy_id"] = "policy-rejected"
+    package["review"] = {"status": "pending", "reviewed_at": None}
+    repository.save_execution(
+        _agent_run("run-rejected", package["policy_id"]),
+        policy_package=package,
+    )
+
+    rejected = repository.reject_policy_package(package["policy_id"])
+
+    assert rejected["review"]["status"] == "rejected"
+    assert repository.get_approved_policy_package(package["policy_id"]) is None
+    _validate_contract(rejected, "PolicyPackage")
+
+
 def test_models_compile_for_postgresql_dialect() -> None:
     statements = [
         str(CreateTable(table).compile(dialect=postgresql.dialect()))
@@ -173,3 +292,19 @@ def test_models_compile_for_postgresql_dialect() -> None:
 
     assert len(statements) == 5
     assert all("CREATE TABLE" in statement for statement in statements)
+
+
+def _validate_contract(payload: dict[str, object], title: str) -> None:
+    contracts_dir = PROJECT_ROOT / "docs" / "contracts"
+    schemas = [
+        loads(path.read_text("utf-8")) for path in contracts_dir.glob("*.schema.json")
+    ]
+    registry = Registry().with_resources(
+        (schema["$id"], Resource.from_contents(schema)) for schema in schemas
+    )
+    schema = next(schema for schema in schemas if schema["title"] == title)
+    Draft202012Validator(
+        schema,
+        registry=registry,
+        format_checker=FormatChecker(),
+    ).validate(payload)
