@@ -39,6 +39,8 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000
 - `POST /api/agent-runs`가 LangGraph를 실행하고 결과를 DB에 저장한다.
 - `GET /api/agent-runs/{run_id}`가 저장된 AgentRun을 조회한다.
 - FieldDefinitionReview 목록·승인·수정·반려 API가 DB 검토 상태를 변경한다.
+- AgentRun 목록과 실행별 정책·필드 제안·검토 묶음 조회 API를 제공한다.
+- 관리자 PolicyPackage 목록·상세 API는 pending/rejected 상태도 조회할 수 있다.
 - PolicyPackage 승인·반려 API가 검토 완료 상태를 저장한다.
 - 연결된 모든 field review가 승인된 PolicyPackage만 시민 조회 API에 공개된다.
 - FastAPI lifespan에서 SQLAlchemy schema를 초기화한다.
@@ -130,6 +132,12 @@ compile까지 검증됐다. PostgreSQL live 연결과 운영 migration 방식은
 
 ## Container verification
 
+### Admin Codex next action
+
+Dockerfile과 PostgreSQL 실행 환경을 준비한 뒤 아래 검증 목록을 수행하고, 마지막에
+`backend/scripts/smoke_agent_review_publish.py`를 격리된 DB에 실행한다. 결과와 실패
+지점을 Admin Work log에 기록한 후 원래 관리자 UI·통합 작업으로 복귀한다.
+
 관리자·통합 담당은 최소한 다음을 실제로 확인하고 자신의 Work log에 기록한다.
 
 1. 저장소 루트 context에서 image build 성공
@@ -140,6 +148,21 @@ compile까지 검증됐다. PostgreSQL live 연결과 운영 migration 방식은
 6. container 종료 후 secret과 시민 데이터가 log에 남지 않았는지 확인
 7. Agent API 실행 결과가 DB에 저장되고 AgentRun을 다시 조회할 수 있는지 확인
 8. PostgreSQL 연결과 관리자 API가 준비되면 관련 smoke 재실행
+
+격리된 배포 DB에서 전체 API 흐름은 저장소 루트 기준으로 다음 스크립트를 사용한다.
+이 스크립트는 실제 AgentRun과 검토·승인 데이터를 생성하므로 운영 DB에는 실행하지
+않는다.
+
+```powershell
+$env:BACKEND_BASE_URL="https://배포된-백엔드"
+$env:SMOKE_NOTICE_URL="https://www.gangnam.go.kr/notice/view.do?id=61922"
+$env:SMOKE_ALLOW_MUTATIONS="true"
+python backend/scripts/smoke_agent_review_publish.py
+```
+
+이전 승인 정책과의 diff까지 확인할 때만 `SMOKE_PREVIOUS_POLICY_ID`를 추가한다. 성공
+결과에는 `run_id`, `policy_id`, 승인한 field review 목록과 최종 `approved` 상태가
+출력된다.
 
 관리자 승인·반려 endpoint는 데모 통합용 최소 API이며 애플리케이션 자체 인증을 아직
 포함하지 않는다. AWS에서 공용 인터넷에 노출하기 전 관리자 경로에 인증 또는 동등한

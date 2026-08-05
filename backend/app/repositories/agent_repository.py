@@ -52,6 +52,52 @@ class AgentRepository:
             record = session.get(AgentRunRecord, run_id)
             return record.payload if record is not None else None
 
+    def list_agent_runs(
+        self,
+        *,
+        status: str | None = None,
+        review_required: bool | None = None,
+        limit: int = 50,
+    ) -> list[dict[str, Any]]:
+        statement: Select[tuple[AgentRunRecord]] = select(AgentRunRecord)
+        if status is not None:
+            statement = statement.where(AgentRunRecord.status == status)
+        if review_required is not None:
+            statement = statement.where(
+                AgentRunRecord.review_required == review_required
+            )
+        statement = statement.order_by(AgentRunRecord.created_at.desc()).limit(limit)
+        with self._session_factory() as session:
+            return [record.payload for record in session.scalars(statement)]
+
+    def get_agent_run_detail(self, run_id: str) -> dict[str, Any] | None:
+        with self._session_factory() as session:
+            agent_run = session.get(AgentRunRecord, run_id)
+            if agent_run is None:
+                return None
+            package = session.scalar(
+                select(PolicyPackageRecord).where(PolicyPackageRecord.run_id == run_id)
+            )
+            proposals = session.scalars(
+                select(FieldDefinitionProposalRecord)
+                .where(FieldDefinitionProposalRecord.run_id == run_id)
+                .order_by(FieldDefinitionProposalRecord.created_at)
+            ).all()
+            reviews = session.scalars(
+                select(FieldDefinitionReviewRecord)
+                .join(FieldDefinitionProposalRecord)
+                .where(FieldDefinitionProposalRecord.run_id == run_id)
+                .order_by(FieldDefinitionReviewRecord.created_at)
+            ).all()
+            return {
+                "agent_run": agent_run.payload,
+                "policy_package": package.payload if package is not None else None,
+                "field_definition_proposals": [
+                    proposal.payload for proposal in proposals
+                ],
+                "field_definition_reviews": [review.payload for review in reviews],
+            }
+
     def get_policy_package(self, policy_id: str) -> dict[str, Any] | None:
         with self._session_factory() as session:
             record = session.get(PolicyPackageRecord, policy_id)
@@ -76,10 +122,45 @@ class AgentRepository:
         with self._session_factory() as session:
             return [record.payload for record in session.scalars(statement)]
 
-    def list_field_definition_reviews(self) -> list[dict[str, Any]]:
+    def list_field_definition_reviews(
+        self,
+        *,
+        status: str | None = None,
+        run_id: str | None = None,
+        limit: int = 100,
+    ) -> list[dict[str, Any]]:
         statement: Select[tuple[FieldDefinitionReviewRecord]] = select(
             FieldDefinitionReviewRecord
-        ).order_by(FieldDefinitionReviewRecord.created_at)
+        )
+        if run_id is not None:
+            statement = statement.join(FieldDefinitionProposalRecord).where(
+                FieldDefinitionProposalRecord.run_id == run_id
+            )
+        if status is not None:
+            statement = statement.where(FieldDefinitionReviewRecord.status == status)
+        statement = statement.order_by(
+            FieldDefinitionReviewRecord.created_at.desc()
+        ).limit(limit)
+        with self._session_factory() as session:
+            return [record.payload for record in session.scalars(statement)]
+
+    def list_admin_policy_packages(
+        self,
+        *,
+        review_status: str | None = None,
+        run_id: str | None = None,
+        limit: int = 100,
+    ) -> list[dict[str, Any]]:
+        statement: Select[tuple[PolicyPackageRecord]] = select(PolicyPackageRecord)
+        if review_status is not None:
+            statement = statement.where(
+                PolicyPackageRecord.review_status == review_status
+            )
+        if run_id is not None:
+            statement = statement.where(PolicyPackageRecord.run_id == run_id)
+        statement = statement.order_by(PolicyPackageRecord.created_at.desc()).limit(
+            limit
+        )
         with self._session_factory() as session:
             return [record.payload for record in session.scalars(statement)]
 
