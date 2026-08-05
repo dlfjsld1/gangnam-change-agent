@@ -2,9 +2,9 @@ from contextlib import asynccontextmanager
 import json
 import os
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Literal
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from openai import OpenAIError
 
@@ -107,8 +107,51 @@ def get_policy_package(
 @app.get("/api/field-definition-reviews")
 def list_field_definition_reviews(
     repository: Annotated[AgentRepository, Depends(get_agent_repository)],
+    status: Literal["pending", "approved", "rejected"] | None = None,
+    run_id: str | None = None,
+    limit: Annotated[int, Query(ge=1, le=100)] = 100,
 ) -> list[dict[str, object]]:
-    return repository.list_field_definition_reviews()
+    return repository.list_field_definition_reviews(
+        status=status,
+        run_id=run_id,
+        limit=limit,
+    )
+
+
+@app.get("/api/admin/policy-packages")
+def list_admin_policy_packages(
+    repository: Annotated[AgentRepository, Depends(get_agent_repository)],
+    review_status: Literal["pending", "approved", "rejected"] | None = None,
+    run_id: str | None = None,
+    limit: Annotated[int, Query(ge=1, le=100)] = 100,
+) -> list[dict[str, object]]:
+    return repository.list_admin_policy_packages(
+        review_status=review_status,
+        run_id=run_id,
+        limit=limit,
+    )
+
+
+@app.get("/api/admin/policy-packages/{policy_id}")
+def get_admin_policy_package(
+    policy_id: str,
+    repository: Annotated[AgentRepository, Depends(get_agent_repository)],
+) -> dict[str, object]:
+    package = repository.get_policy_package(policy_id)
+    if package is None:
+        raise HTTPException(status_code=404, detail="Policy package not found.")
+    return package
+
+
+@app.get("/api/admin/agent-runs/{run_id}")
+def get_admin_agent_run_detail(
+    run_id: str,
+    repository: Annotated[AgentRepository, Depends(get_agent_repository)],
+) -> dict[str, object]:
+    detail = repository.get_agent_run_detail(run_id)
+    if detail is None:
+        raise HTTPException(status_code=404, detail="Agent run not found.")
+    return detail
 
 
 @app.post("/api/field-definition-reviews/{review_id}/approve")
@@ -200,6 +243,27 @@ def create_agent_run(
             status_code=503,
             detail="Agent runtime is unavailable.",
         ) from error
+
+
+@app.get("/api/agent-runs")
+def list_agent_runs(
+    repository: Annotated[AgentRepository, Depends(get_agent_repository)],
+    status: Literal[
+        "queued",
+        "running",
+        "completed",
+        "failed",
+        "review_required",
+    ]
+    | None = None,
+    review_required: bool | None = None,
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+) -> list[dict[str, object]]:
+    return repository.list_agent_runs(
+        status=status,
+        review_required=review_required,
+        limit=limit,
+    )
 
 
 @app.get("/api/agent-runs/{run_id}")

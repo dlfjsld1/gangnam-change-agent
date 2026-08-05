@@ -206,6 +206,24 @@ Work log는 프로젝트 전체 기획을 공지하는 파일이 아니다.
 4. `docs/contracts/api.md`
 5. `docs/worklogs/admin-integration/WORKLOG.md`
 
+### 현재 백엔드 배포 인계
+
+관리자·통합 담당 Codex는 Docker/PostgreSQL 작업을 시작할 때 다음 현재 상태를 기준으로
+삼는다.
+
+- Agent 실행, FieldDefinitionReview 승인·수정·반려, PolicyPackage 승인·반려와
+  승인 정책 공개 API는 백엔드에 구현되어 있다.
+- `backend/scripts/smoke_agent_review_publish.py`로
+  `Agent 실행 → 필드 검토 승인 → 정책 승인 → 시민 API 공개`를 검증한다.
+- smoke는 실제 DB 데이터를 생성·승인하므로 격리된 로컬 또는 배포 검증 DB에서만
+  `SMOKE_ALLOW_MUTATIONS=true`로 실행한다.
+- `BACKEND_BASE_URL`, `SMOKE_NOTICE_URL`을 설정하고, 이전 정책 diff가 필요할 때만
+  `SMOKE_PREVIOUS_POLICY_ID`를 설정한다.
+- PostgreSQL 연결, Docker build/run과 실제 smoke 결과는
+  `docs/worklogs/admin-integration/WORKLOG.md`에 기록한다.
+- 실패 원인이 백엔드 API나 repository이면 Agent·백엔드 담당에게 전달하고, Agent
+  topology나 parser를 배포 작업에서 임의로 수정하지 않는다.
+
 ---
 
 # 5. 코드와 Work log 매핑

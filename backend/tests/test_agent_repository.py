@@ -79,9 +79,12 @@ def _proposal() -> FieldDefinitionProposal:
     )
 
 
-def _review(proposal: FieldDefinitionProposal) -> FieldDefinitionReview:
+def _review(
+    proposal: FieldDefinitionProposal,
+    run_id: str = "run-1",
+) -> FieldDefinitionReview:
     return FieldDefinitionReview(
-        review_id=f"run-1:{proposal.proposed_field.key}",
+        review_id=f"{run_id}:{proposal.proposed_field.key}",
         proposal=proposal,
     )
 
@@ -188,6 +191,60 @@ def test_failed_run_can_be_saved_without_notice_or_policy(tmp_path: Path) -> Non
     repository.save_execution(failed_run)
 
     assert repository.get_agent_run("run-failed")["status"] == "failed"
+
+
+def test_admin_queries_filter_and_join_execution_data(tmp_path: Path) -> None:
+    database = Database(f"sqlite:///{tmp_path / 'agent.db'}")
+    database.create_schema()
+    repository = AgentRepository(database.session_factory)
+    package = deepcopy(APPROVED_POLICY)
+    package["policy_id"] = "policy-admin"
+    package["review"] = {"status": "pending", "reviewed_at": None}
+    proposal = _proposal()
+    repository.save_execution(
+        _agent_run("run-admin", package["policy_id"]),
+        policy_package=package,
+        field_proposals=[proposal],
+        field_reviews=[_review(proposal, "run-admin")],
+    )
+    repository.save_execution(
+        AgentRun(
+            run_id="run-completed",
+            notice_id="61923",
+            status="completed",
+            node_logs=[],
+            review_required=False,
+            review_reason=None,
+            unresolved_fields=[],
+        )
+    )
+
+    runs = repository.list_agent_runs(
+        status="review_required",
+        review_required=True,
+        limit=10,
+    )
+    reviews = repository.list_field_definition_reviews(
+        status="pending",
+        run_id="run-admin",
+        limit=10,
+    )
+    packages = repository.list_admin_policy_packages(
+        review_status="pending",
+        run_id="run-admin",
+        limit=10,
+    )
+    detail = repository.get_agent_run_detail("run-admin")
+
+    assert [run["run_id"] for run in runs] == ["run-admin"]
+    assert [review["review_id"] for review in reviews] == ["run-admin:new_condition"]
+    assert [item["policy_id"] for item in packages] == ["policy-admin"]
+    assert detail is not None
+    assert detail["agent_run"]["run_id"] == "run-admin"
+    assert detail["policy_package"]["policy_id"] == "policy-admin"
+    assert len(detail["field_definition_proposals"]) == 1
+    assert len(detail["field_definition_reviews"]) == 1
+    assert repository.get_agent_run_detail("missing") is None
 
 
 def test_field_approval_rewrites_policy_and_enables_publish(tmp_path: Path) -> None:

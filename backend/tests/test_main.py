@@ -88,7 +88,13 @@ class FakeReviewRepository:
         self.conflict = conflict
         self.missing = missing
 
-    def list_field_definition_reviews(self) -> list[dict[str, object]]:
+    def list_field_definition_reviews(
+        self,
+        *,
+        status: str | None = None,
+        run_id: str | None = None,
+        limit: int = 100,
+    ) -> list[dict[str, object]]:
         return [{"review_id": "review-1", "status": "pending"}]
 
     def approve_field_definition_review(
@@ -121,6 +127,57 @@ class FakePublishedRepository:
             (item for item in self.packages if item["policy_id"] == policy_id),
             None,
         )
+
+
+class FakeAdminQueryRepository:
+    def __init__(self, *, missing: bool = False) -> None:
+        self.missing = missing
+        self.filters: dict[str, object] = {}
+
+    def list_agent_runs(
+        self,
+        *,
+        status: str | None = None,
+        review_required: bool | None = None,
+        limit: int = 50,
+    ) -> list[dict[str, object]]:
+        self.filters["runs"] = (status, review_required, limit)
+        return [{"run_id": "run-admin", "status": "review_required"}]
+
+    def list_field_definition_reviews(
+        self,
+        *,
+        status: str | None = None,
+        run_id: str | None = None,
+        limit: int = 100,
+    ) -> list[dict[str, object]]:
+        self.filters["reviews"] = (status, run_id, limit)
+        return [{"review_id": "run-admin:new-condition", "status": "pending"}]
+
+    def list_admin_policy_packages(
+        self,
+        *,
+        review_status: str | None = None,
+        run_id: str | None = None,
+        limit: int = 100,
+    ) -> list[dict[str, object]]:
+        self.filters["packages"] = (review_status, run_id, limit)
+        return [{"policy_id": "policy-admin", "review": {"status": "pending"}}]
+
+    def get_policy_package(self, policy_id: str) -> dict[str, object] | None:
+        if self.missing:
+            return None
+        return {"policy_id": policy_id, "review": {"status": "pending"}}
+
+    def get_agent_run_detail(self, run_id: str) -> dict[str, object] | None:
+        if self.missing:
+            return None
+        return {
+            "agent_run": {"run_id": run_id},
+            "policy_package": {"policy_id": "policy-admin"},
+            "field_definition_proposals": [],
+            "field_definition_reviews": [],
+        }
 
 
 def test_agent_run_endpoint_executes_service() -> None:
@@ -257,3 +314,55 @@ def test_public_policy_api_prefers_approved_database_packages() -> None:
 
     assert list_response.json() == [package]
     assert fixture_response.status_code == 404
+
+
+def test_admin_query_endpoints_forward_filters_and_return_details() -> None:
+    repository = FakeAdminQueryRepository()
+    app.dependency_overrides[get_agent_repository] = lambda: repository
+    try:
+        runs = client.get(
+            "/api/agent-runs?status=review_required&review_required=true&limit=10"
+        )
+        reviews = client.get(
+            "/api/field-definition-reviews?status=pending&run_id=run-admin&limit=20"
+        )
+        packages = client.get(
+            "/api/admin/policy-packages?review_status=pending&run_id=run-admin&limit=30"
+        )
+        package = client.get("/api/admin/policy-packages/policy-admin")
+        detail = client.get("/api/admin/agent-runs/run-admin")
+    finally:
+        app.dependency_overrides.clear()
+
+    assert runs.status_code == 200
+    assert reviews.status_code == 200
+    assert packages.status_code == 200
+    assert package.json()["review"]["status"] == "pending"
+    assert detail.json()["agent_run"]["run_id"] == "run-admin"
+    assert repository.filters == {
+        "runs": ("review_required", True, 10),
+        "reviews": ("pending", "run-admin", 20),
+        "packages": ("pending", "run-admin", 30),
+    }
+
+
+def test_admin_query_details_return_not_found() -> None:
+    app.dependency_overrides[get_agent_repository] = lambda: FakeAdminQueryRepository(
+        missing=True
+    )
+    try:
+        package = client.get("/api/admin/policy-packages/missing")
+        detail = client.get("/api/admin/agent-runs/missing")
+    finally:
+        app.dependency_overrides.clear()
+
+    assert package.status_code == 404
+    assert detail.status_code == 404
+
+
+def test_admin_query_rejects_invalid_filter_or_limit() -> None:
+    invalid_status = client.get("/api/agent-runs?status=unknown")
+    invalid_limit = client.get("/api/admin/policy-packages?limit=101")
+
+    assert invalid_status.status_code == 422
+    assert invalid_limit.status_code == 422
