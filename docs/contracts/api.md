@@ -37,12 +37,16 @@
 ```json
 {
   "agent_run": {},
+  "source_notice": {},
   "policy_package": {},
   "field_definition_proposals": [],
   "field_definition_reviews": [],
   "evidence_issues": []
 }
 ```
+
+`source_notice.attachments`는 원본 `url`과 선택적인 `storage_key`, `public_url`,
+`sha256`을 포함한다. 아직 공개 archive되지 않은 첨부의 선택 필드는 null이다.
 
 실행 중 수집·추출·검증이 실패해도 AgentRun이 생성됐다면 HTTP 201 응답의
 `agent_run.status`를 `failed` 또는 `review_required`로 반환하고 DB에 기록한다.
@@ -122,6 +126,11 @@ HumanHandoff 별도 API는 만들지 않는다. 사람 검토 필요 상태는 A
 PolicyPackage 승인은 연결된 모든 FieldDefinitionReview가 approved일 때만 가능하다.
 pending 또는 rejected 검토가 있으면 409를 반환한다. 승인된 package는
 `review.status=approved`와 `reviewed_at`을 기록한 뒤 시민 정책 조회 API에 공개한다.
+
+S3 첨부 archive가 설정된 배포 환경에서는 최종 승인 시 정책 evidence가 참조하는 공식
+공개 첨부만 S3에 저장하고 evidence `source_url`을 고정 공개 URL로 변경한다. 개인정보
+가능성이 있는 파일명은 409로 공개를 차단하고, 다운로드·S3 업로드 실패 시 정책을
+승인하지 않고 503을 반환한다.
 
 PolicyPackage 반려는 `review.status=rejected`를 기록하며 시민 정책 조회 API에
 노출하지 않는다.
