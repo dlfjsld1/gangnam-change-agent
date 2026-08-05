@@ -3,8 +3,8 @@
 ## Current status
 
 - Current milestone: 공식 강남구 게시판 수집 adapter
-- Working: health API, 승인 정책 fixture API, 공통 계약, 공식 게시판 수집, HTML·PDF·HWPX 추출, 최후 복구용 OpenAI 이미지 OCR adapter, 동일 문서 변형 교차 검증
-- In progress: OCR 결과와 HTML 근거의 정책 조건 비교
+- Working: health API, 승인 정책 fixture API, 공통 계약, 공식 게시판 수집, HTML·PDF·HWPX 추출, 최후 복구용 OpenAI 이미지 OCR adapter, 동일 문서 변형 교차 검증, 구조화 정책 후보와 PolicyPackage 조립
+- In progress: 기존 FieldDefinition 재사용과 신규 FieldDefinitionProposal 연결
 - Not implemented: DB, LangGraph 실행
 - Blockers: none
 
@@ -15,8 +15,8 @@
 - [x] HTML과 동일 문서의 PDF·HWPX를 파싱하고 동일 basename의 형식별 결과를 교차 검증한다.
 - [x] 이미지와 스캔 PDF 페이지를 OpenAI Responses API OCR 흐름에 연결한다.
 - [x] 공개 이미지·스캔 공고로 OpenAI OCR live smoke를 수행한다.
-- [ ] OCR 결과를 HTML·다른 첨부 근거와 대조해 의미가 달라진 오독을 검토 대상으로 전환한다.
-- [ ] 추출 결과를 EligibilityRule과 PolicyPackage 구조로 변환한다.
+- [x] OCR 결과를 HTML·다른 첨부 근거와 대조해 의미가 달라진 오독을 검토 대상으로 전환한다.
+- [x] 추출 결과를 EligibilityRule과 PolicyPackage 구조로 변환한다.
 - [ ] 기존 FieldDefinition 재사용 또는 FieldDefinitionProposal 생성을 연결한다.
 - [x] 문서 추출·근거 비교 로그와 review_required 사유를 AgentRun에 기록한다.
 - [ ] LangGraph 전체 노드·도구 실행 로그를 AgentRun에 누적한다.
@@ -43,6 +43,25 @@
 - docs/contracts/field-definition-proposal.schema.json
 
 ## Change history
+
+### 2026-08-05 — 구조화 정책 후보와 근거 검증
+
+#### Summary
+
+OpenAI Responses API의 Pydantic Structured Outputs로 공개 공고에서 `PolicyDraft`를 추출하고, 로컬 코드가 EligibilityRule·FieldDefinition·evidence를 현재 PolicyPackage 계약으로 조립하도록 구현했다. 원문에 없는 인용과 HTML 제목·이미지 OCR 불일치는 관리자 검토 사유로 전환한다.
+
+#### Contract impact
+
+공통 schema는 변경하지 않고 기존 PolicyPackage와 AgentRun 계약을 소비한다. 기본 모델은 `gpt-5.6-terra`이며 환경변수로 교체할 수 있다.
+
+#### Validation
+
+- ruff check: passed
+- ruff format --check: passed
+- pytest: 33 passed
+- PolicyPackage JSON Schema와 재귀 EligibilityRule validation: passed
+- live policy extraction: 공고 `61922`에서 조건 8개·행동 7개·PolicyPackage 후보 생성
+- live evidence validation: 근거 문제 3개와 미승인 필드 8개를 감지해 review_required 전환
 
 ### 2026-08-05 — 공개 이미지 공고 OCR smoke
 

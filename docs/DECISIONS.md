@@ -59,3 +59,16 @@
 - Reason: OpenAI OCR을 관리자 검토 직전의 제한된 복구 단계로 두어 API 비용과 지연을 줄이면서 사람 검토 전에 한 번 더 자동 복구하기 위함이다.
 - Affected areas: backend
 - Contract impact: 공통 API schema 변경 없음
+
+## D-006 — 구조화 정책 후보와 결정론적 근거 검증
+
+- Date: 2026-08-05
+- Status: accepted
+- Decision: 공개 공고 텍스트는 OpenAI Responses API의 Pydantic Structured Outputs로 `PolicyDraft` 후보를 추출하고, 백엔드가 이를 현재 `PolicyPackage` 계약으로 결정론적으로 조립한다.
+- Evidence rule: 모델이 반환한 모든 인용은 지정한 원문 문서에 실제로 존재해야 하며, HTML 제목과 이미지 OCR의 핵심 문구 유사도가 기준보다 낮으면 검토 대상으로 전환한다.
+- Field rule: 기존 registry에 없는 프로필 필드는 `pending` 상태로 포함하고 `AgentRun.unresolved_fields`에 기록한다. 승인된 정책으로 공개하지 않는다.
+- Model: 기본 정책 추출 모델은 비용과 품질 균형을 위해 `gpt-5.6-terra`를 사용하고 `OPENAI_POLICY_MODEL`로 교체할 수 있다.
+- Privacy: 모델 입력은 공개 공고와 공개 첨부 텍스트로 제한하며 시민 프로필은 포함하지 않는다.
+- Reason: LLM은 구조화 후보 생성에만 사용하고 원문 근거·연산자·필드 승인 여부는 로컬 코드가 다시 검증하기 위함이다.
+- Affected areas: backend, frontend/admin
+- Contract impact: 현재 PolicyPackage와 AgentRun schema를 그대로 사용한다.
