@@ -33,6 +33,28 @@ Agent 개발 일부를 다른 팀원에게 나누는 것은 선택사항이다.
 - 기본적으로 Agent·백엔드 담당이 전체
   `공고 → 정책 패키지 API` 흐름을 책임진다.
 
+## 임시 위임 Task
+
+`docs/tasks/`의 Task 문서는 다른 담당의 Codex 세션에 Agent Backend 구현
+일부를 잠시 맡기기 위한 제한된 문맥이다. 새 프로젝트를 시작하거나 코드
+ownership을 이전하는 문서가 아니다.
+
+Task 수행자는 다음 순서만 읽고 구현을 시작한다.
+
+1. `AGENTS.md`
+2. 배정받은 `docs/tasks/TASK-*.md`
+3. Task에 명시된 `docs/contracts/` 파일
+4. `docs/worklogs/agent-backend/WORKLOG.md`
+
+운영 규칙:
+
+- Task에 적힌 범위와 수정 금지 영역을 우선한다.
+- Graph topology와 State 변경은 Agent Backend 담당에게 남긴다.
+- backend 구현 결과와 실제 검증은 Agent Backend Work log에 기록한다.
+- Task 완료는 장기 ownership 변경이나 Agent Backend 다음 작업의 인수를 뜻하지 않는다.
+- 완료 후 Citizen 또는 Admin 담당은 자기 feature 브랜치의 원래 Work log와 Next actions로 즉시 복귀한다.
+- 같은 backend 파일을 Agent Backend 담당과 동시에 수정하지 않도록 시작 전에 작업 파일을 합의한다.
+
 ---
 
 # 2. 왜 저장소 문서가 필요한가
@@ -73,6 +95,9 @@ Agent 개발 일부를 다른 팀원에게 나누는 것은 선택사항이다.
 └─ docs/
    ├─ PROJECT_CONTEXT.md
    ├─ DECISIONS.md
+   ├─ tasks/
+   │  ├─ TASK-001-field-registry-node.md
+   │  └─ TASK-002-review-node.md
    ├─ contracts/
    │  ├─ policy-package.schema.json
    │  ├─ field-definition.schema.json
@@ -160,6 +185,27 @@ Work log는 프로젝트 전체 기획을 공지하는 파일이 아니다.
 - `contracts/`: 공유되는 코드 계약
 - `WORKLOG.md`: 각 담당의 실제 구현 상태
 
+## `docs/tasks/`
+
+다른 담당의 Codex가 Agent Backend의 제한된 구현을 잠시 수행할 때 필요한
+목적, 범위, 입력·출력 계약, 금지 영역과 복귀 절차를 기록한다.
+
+- Task 문서는 현재 코드와 contracts를 대체하지 않는다.
+- Task에 명시되지 않은 Agent Backend 작업으로 범위를 확장하지 않는다.
+- Task 종료 후 장기 진행 상태는 담당별 Work log에서만 관리한다.
+
+## `docs/deployment/`
+
+담당 간 배포 경계, 실행 환경변수, build context, health check와 현재 준비 상태를
+기록한다. 백엔드 Dockerfile 또는 AWS 실행 환경을 다루는 관리자·통합 담당과
+그 Codex는 다음 순서로 읽는다.
+
+1. `AGENTS.md`
+2. `docs/deployment/BACKEND_CONTAINER_HANDOFF.md`
+3. `docs/DECISIONS.md`의 데이터베이스·보안 결정
+4. `docs/contracts/api.md`
+5. `docs/worklogs/admin-integration/WORKLOG.md`
+
 ---
 
 # 5. 코드와 Work log 매핑
@@ -195,6 +241,18 @@ Work log는 프로젝트 전체 기획을 공지하는 파일이 아니다.
 - In progress:
 - Not implemented:
 - Blockers:
+
+## Next actions
+
+- [ ] 우선순위가 가장 높은 미완료 작업
+
+## Completion criteria
+
+- 검증 가능한 완료 조건
+
+## Dependencies
+
+- 선행 작업, 다른 담당 계약, 외부 입력
 
 ## Current contracts
 
@@ -476,3 +534,69 @@ docs/
 
 > 프로젝트 전체 변경은 PROJECT_CONTEXT·DECISIONS·contracts로 알리고,
 > 각 담당의 실제 구현 진행 상황은 중앙화된 담당 Work log로 추적한다.
+
+---
+
+# 12. 구현·검증·배포 세부 규칙
+
+이 절은 루트 `AGENTS.md`에서 분리한 세부 실행 기준이다. 각 담당 Codex는 실제 코드를 수정할 때 해당 언어와 영역의 규칙을 적용한다.
+
+## 공통 구현 원칙
+
+- MVP 핵심 흐름 밖의 기능과 불필요한 추상화를 추가하지 않는다.
+- 요청과 직접 관련된 파일만 수정하고 주변 코드를 임의로 정리하지 않는다.
+- 실행문은 한 줄에 하나만 작성하고 명확한 이름과 작은 책임 단위를 사용한다.
+- 사용하지 않는 import, 죽은 코드, 주석 처리한 구현, 디버그 비밀값을 남기지 않는다.
+- 새 의존성은 MVP에 반드시 필요한 경우에만 추가한다.
+- 기존 동작을 바꾸는 정리나 리팩터링을 기능 변경과 섞지 않는다.
+
+## Python
+
+- 함수·변수·모듈은 `snake_case`, 클래스와 Pydantic 모델은 `PascalCase`, 상수는 `UPPER_SNAKE_CASE`를 사용한다.
+- 공개 함수와 Agent 상태에 타입 힌트와 반환 타입을 작성한다.
+- FastAPI route는 얇게 유지하고 비즈니스 로직은 service, tool, Agent node로 분리한다.
+- 외부 호출에는 timeout과 구체적인 오류 처리를 둔다.
+- LLM 추출 결과는 Pydantic 구조화 출력으로 검증한다.
+- eligibility 판정은 자유 형식 LLM 출력으로 수행하지 않는다.
+- 추출한 모든 변경에는 evidence를 연결한다.
+
+## TypeScript·React
+
+- 변수와 함수는 `camelCase`, 컴포넌트와 타입은 `PascalCase`, 상수는 `UPPER_SNAKE_CASE`를 사용한다.
+- TypeScript를 사용하고 `any` 대신 DTO와 도메인 타입을 정의한다.
+- API 접근, 결정론적 rule evaluation, UI 표현을 분리한다.
+- API의 `snake_case` payload는 adapter에서 한 번만 변환하거나 DTO에 명시적으로 유지한다.
+- 시민 프로필과 판정 결과를 서버 요청, 분석 로그, query string에 넣지 않는다.
+- eligibility 설명은 결정론적 템플릿을 사용한다.
+
+## Agent·문서 처리
+
+- Agent는 HTML 완전성을 판단하고 필요한 첨부 도구를 선택한 뒤 결과를 평가해야 한다.
+- 근거가 부족하면 `max_retry` 안에서 다른 경로를 시도하고, 해결되지 않으면 AgentRun으로 사람 검토를 요청한다.
+- 노드와 도구 실행 로그를 남기되 시민 프로필이나 비밀값은 기록하지 않는다.
+- 검증되지 않은 약한 근거를 자동 게시하지 않으며 사람 승인을 요구한다.
+- legacy `.hwp`는 지원을 과장하지 않고 필요하면 사람 검토로 전환한다.
+
+## 검증
+
+- Python은 저장소 설정에 따라 `ruff check`, formatter check, `pytest`를 실행한다.
+- 프론트엔드는 기존 `package.json` script의 type check, test, build를 실행한다.
+- 공통 JSON 변경은 schema 자체 유효성, `$ref`, 대표 fixture, 재귀 rule을 검증한다.
+- 새 formatter나 test framework를 팀 합의 없이 설치하지 않는다.
+- 실행하지 않은 검증을 통과했다고 기록하지 않으며 실패·생략 항목을 명시한다.
+
+## 배포
+
+- AWS보다 로컬 end-to-end 동작을 먼저 확인한다.
+- Kubernetes, 복잡한 VPC, Terraform 등 MVP에 불필요한 인프라는 추가하지 않는다.
+- `.env.example`, CORS, API base URL, health check, HTTPS를 확인한다.
+- 네트워크 실패에 대비한 demo fixture와 화면 증빙을 유지한다.
+- 백엔드 컨테이너와 AWS 배포 전 `docs/deployment/BACKEND_CONTAINER_HANDOFF.md`를 읽고 현재 준비 상태와 미구현 항목을 구분한다.
+
+## Git 협업 세부사항
+
+- 작업 전 최신 `main`을 받고 담당 브랜치에서 작업한다.
+- 한 커밋에는 하나의 논리적 변경만 담고 관련 검증 후 올린다.
+- 공용 브랜치를 force push하지 않고 충돌 해결 후 관련 검증을 다시 실행한다.
+- `.env`, 자격 증명, dependency directory, 가상환경, build output, 실제 수집 원본은 커밋하지 않는다.
+- 상세 커밋 제목은 루트 `AGENTS.md`의 형식을 따른다.

@@ -5,7 +5,10 @@ __pycache__/
 .ruff_cache/
 .venv/
 backend/.venv/
-backend/gangnam-change-agent.db
+*.egg-info/
+*.db
+*.db-shm
+*.db-wal
 
 # Node.js
 node_modules/
@@ -23,12 +26,3 @@ frontend/*/dist/
 # Operating system files
 .DS_Store
 Thumbs.db
-
-# Terraform
-.terraform/
-*.tfstate
-*.tfstate.*
-*.tfplan
-*.tfvars
-!*.tfvars.example
-crash.log
