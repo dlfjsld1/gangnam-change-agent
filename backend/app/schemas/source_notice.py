@@ -14,7 +14,7 @@ SourceBoard = Literal[
 class SourceAttachment(BaseModel):
     filename: str
     url: str
-    file_type: Literal["hwpx", "pdf", "hwp", "other"]
+    file_type: Literal["hwpx", "pdf", "image", "hwp", "other"]
 
 
 class SourceNotice(BaseModel):

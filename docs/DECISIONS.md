@@ -32,3 +32,16 @@
 - Reason: 두 HTML 구조만으로 혜택, 정책 변경, 새로운 조건, 자주 이용하는 정류장 시나리오를 모두 재현할 수 있다.
 - Affected areas: backend, frontend/citizen, frontend/admin
 - Contract impact: 현재 PolicyPackage의 evidence와 impact_scope로 표현 가능하므로 공통 schema 변경 없음
+
+## D-004 — 동일 문서의 형식별 추출과 교차 검증
+
+- Date: 2026-08-05
+- Status: accepted
+- Decision: HTML 본문과 동일 basename으로 제공되는 PDF·HWPX·이미지를 가능한 범위에서 모두 파싱하며, 확장자 우선순위로 다른 형식을 생략하지 않는다.
+- Representative evidence priority: HTML, PDF, HWPX, image
+- Comparison boundary: 동일 basename 첨부끼리는 원문 텍스트를 비교하고, 요약 HTML과 대표 첨부의 조건·기간·금액 비교는 구조화된 정책 조건 추출 단계에서 수행한다.
+- Review rule: 형식별 추출 실패 또는 내용 불일치는 `review_required` 사유로 남기고 결과를 임의로 폐기하지 않는다.
+- Attachment transport: 첨부 URL은 강남구와 강남구 전자고시 호스트만 허용한다. 전자고시 호스트의 불완전한 인증서 체인에는 호스트 한정 예외를 적용하고 다운로드한 파일 signature를 검증한다.
+- Reason: 배포 형식에 따른 누락과 파싱 오류를 교차 검증하고 관리자에게 근거 충돌을 노출하기 위함이다.
+- Affected areas: backend, frontend/admin
+- Contract impact: 현재 AgentRun의 `review_required`, `review_reason`, `unresolved_fields`로 표현 가능하므로 공통 schema 변경 없음

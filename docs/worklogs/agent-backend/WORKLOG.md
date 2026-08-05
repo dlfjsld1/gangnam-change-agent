@@ -3,16 +3,17 @@
 ## Current status
 
 - Current milestone: 공식 강남구 게시판 수집 adapter
-- Working: health API, 승인 정책 fixture API, 공통 계약, 통합 공고·주민센터 새소식 수집과 상세 HTML 정규화
-- In progress: 동일 문서의 PDF·HWPX·이미지 추출 결과 교차 검증
-- Not implemented: HWPX/PDF 파서, DB, LangGraph 실행, Agent 실행 로그
+- Working: health API, 승인 정책 fixture API, 공통 계약, 공식 게시판 수집, HTML·PDF·HWPX 추출과 동일 문서 변형 교차 검증
+- In progress: 이미지 OCR 공급자 연결과 형식별 추출 결과의 정책 조건 비교
+- Not implemented: 이미지 OCR, DB, LangGraph 실행, Agent 실행 로그
 - Blockers: 없음
 
 ## Next actions
 
 - [x] 데모에 사용할 공식 게시판과 네 시나리오의 공고 후보를 확정한다.
 - [x] 통합 공고와 주민센터 새소식의 본문·첨부파일 링크를 구조화한다.
-- [ ] HTML과 동일 문서의 PDF·HWPX·이미지를 모두 파싱하고 결과를 교차 검증한다.
+- [x] HTML과 동일 문서의 PDF·HWPX를 파싱하고 동일 basename의 형식별 결과를 교차 검증한다.
+- [ ] 이미지 OCR 공급자를 연결해 동일 basename의 이미지도 같은 비교 흐름에 포함한다.
 - [ ] 추출 결과를 EligibilityRule과 PolicyPackage 구조로 변환한다.
 - [ ] 기존 FieldDefinition 재사용 또는 FieldDefinitionProposal 생성을 연결한다.
 - [ ] AgentRun에 노드·도구 실행 로그와 review_required 사유를 기록한다.
@@ -39,6 +40,24 @@
 - docs/contracts/field-definition-proposal.schema.json
 
 ## Change history
+
+### 2026-08-05 — 문서 변형 추출과 교차 검증
+
+#### Summary
+
+PDF와 HWPX 텍스트 추출기, Scrapling 첨부 다운로드, 동일 basename 그룹화, 전체 형식 실행, 대표 근거 선택과 충돌 검토 처리를 추가했다. 이미지 첨부는 OCR 공급자가 연결될 때까지 추출 실패와 검토 사유로 명시한다.
+
+#### Contract impact
+
+AgentRun의 기존 검토 필드로 표현할 수 있어 공통 schema는 변경하지 않았다.
+
+#### Tests
+
+- ruff check: passed
+- ruff format --check: passed
+- pytest: 17 passed
+- live HWPX smoke: 공고 61922의 81,546 byte 첨부에서 5,701자 추출
+- live PDF smoke: 개인정보 가능성이 없는 적절한 공식 fixture를 찾지 못해 생략
 
 ### 2026-08-05 — 공식 수집 소스와 parser 범위 확정
 

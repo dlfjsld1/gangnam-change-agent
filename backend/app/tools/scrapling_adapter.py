@@ -164,7 +164,9 @@ def _attachment_filename(link: Selector) -> str:
     if not text_parts:
         return ""
     filename_match = re.match(
-        r"(.+?\.(?:hwpx|pdf|hwp))\b", text_parts[0], re.IGNORECASE
+        r"(.+?\.(?:hwpx|pdf|hwp|png|jpe?g|gif|bmp|tiff?|webp))\b",
+        text_parts[0],
+        re.IGNORECASE,
     )
     return filename_match.group(1) if filename_match else text_parts[0]
 
@@ -229,6 +231,8 @@ def _integrated_board(source_url: str) -> SourceBoard:
 
 def _file_type(filename: str) -> str:
     suffix = PurePosixPath(filename.lower()).suffix.lstrip(".")
+    if suffix in {"png", "jpg", "jpeg", "gif", "bmp", "tif", "tiff", "webp"}:
+        return "image"
     return suffix if suffix in {"hwpx", "pdf", "hwp"} else "other"
 
 
