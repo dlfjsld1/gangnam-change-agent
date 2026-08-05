@@ -169,6 +169,23 @@ def _validate_policy_package(payload: dict[str, object]) -> None:
     ).validate(payload)
 
 
+def _validate_field_proposal(payload: dict[str, object]) -> None:
+    schemas = [
+        loads(path.read_text("utf-8")) for path in CONTRACTS_DIR.glob("*.schema.json")
+    ]
+    registry = Registry().with_resources(
+        (schema["$id"], Resource.from_contents(schema)) for schema in schemas
+    )
+    proposal_schema = next(
+        schema for schema in schemas if schema["title"] == "FieldDefinitionProposal"
+    )
+    Draft202012Validator(
+        proposal_schema,
+        registry=registry,
+        format_checker=FormatChecker(),
+    ).validate(payload)
+
+
 def test_openai_extractor_uses_structured_policy_draft() -> None:
     draft = _draft()
     client = FakeClient(draft)
@@ -262,6 +279,8 @@ def test_unknown_field_remains_pending_and_unresolved() -> None:
     assert result.policy_package is not None
     assert result.agent_run.review_required is True
     assert result.agent_run.unresolved_fields == ["residence"]
+    assert len(result.field_proposals) == 1
+    _validate_field_proposal(result.field_proposals[0].model_dump(mode="json"))
     assert result.policy_package["required_profile_fields"][0]["review_status"] == (
         "pending"
     )
@@ -285,3 +304,44 @@ def test_document_extraction_conflict_is_preserved() -> None:
 
     assert result.agent_run.review_required is True
     assert result.evidence_issues[0].code == "evidence.document_conflict"
+
+
+def test_approved_field_is_reused_without_proposal() -> None:
+    result = build_policy_package(
+        "run-existing-field",
+        _notice(),
+        _corpus(),
+        _draft(),
+        _registry(),
+    )
+
+    assert result.field_proposals == []
+    assert result.agent_run.unresolved_fields == []
+    assert result.policy_package is not None
+    assert result.policy_package["required_profile_fields"][0]["review_status"] == (
+        "approved"
+    )
+
+
+def test_pending_field_is_not_proposed_twice() -> None:
+    pending_residence = FieldDefinition(
+        key="residence",
+        label="거주 지역",
+        data_type="string",
+        question="현재 거주 지역은 어디인가요?",
+        sensitivity="medium",
+        validity_days=365,
+        review_status="pending",
+    )
+
+    result = build_policy_package(
+        "run-pending-field",
+        _notice(),
+        _corpus(),
+        _draft(),
+        FieldRegistry([pending_residence]),
+    )
+
+    assert result.field_proposals == []
+    assert result.agent_run.review_required is True
+    assert result.agent_run.unresolved_fields == ["residence"]

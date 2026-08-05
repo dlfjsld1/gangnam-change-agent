@@ -4,7 +4,11 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.schemas.agent_run import AgentRun
-from app.schemas.field_definition import FieldDataType, Sensitivity
+from app.schemas.field_definition import (
+    FieldDataType,
+    FieldDefinitionProposal,
+    Sensitivity,
+)
 
 
 RuleOperator = Literal["equals", "in", "between", "contains", "exists"]
@@ -58,3 +62,4 @@ class PolicyBuildResult(BaseModel):
     policy_package: dict[str, object] | None
     agent_run: AgentRun
     evidence_issues: list[EvidenceIssue]
+    field_proposals: list[FieldDefinitionProposal]

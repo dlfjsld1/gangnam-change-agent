@@ -3,7 +3,7 @@ import re
 
 from app.schemas.agent_run import AgentNodeLog, AgentRun
 from app.schemas.document_extraction import DocumentExtraction, NoticeDocumentCorpus
-from app.schemas.field_definition import FieldDefinition
+from app.schemas.field_definition import FieldDefinition, FieldDefinitionProposal
 from app.schemas.policy_extraction import (
     EvidenceIssue,
     PolicyBuildResult,
@@ -27,23 +27,22 @@ def build_policy_package(
     documents = _source_documents(notice, corpus)
     issues = _validate_evidence(notice, corpus, draft, documents)
     unresolved_fields: list[str] = []
-    definitions: list[FieldDefinition] = []
+    definitions: dict[str, FieldDefinition] = {}
+    field_proposals: list[FieldDefinitionProposal] = []
     rules: list[dict[str, object]] = []
 
     for condition in draft.conditions:
-        definition = field_registry.find(condition.field)
-        if definition is None:
-            definition = FieldDefinition(
-                key=condition.field,
-                label=condition.label,
-                data_type=condition.data_type,
-                question=condition.question,
-                sensitivity=condition.sensitivity,
-                validity_days=condition.validity_days,
-                review_status="pending",
+        if condition.field not in definitions:
+            definition, proposal = _resolve_field_definition(
+                notice,
+                condition,
+                field_registry,
             )
-            unresolved_fields.append(condition.field)
-        definitions.append(definition)
+            definitions[condition.field] = definition
+            if proposal is not None:
+                field_proposals.append(proposal)
+            if definition.review_status != "approved":
+                unresolved_fields.append(condition.field)
         try:
             rules.append(_eligibility_rule(condition))
         except ValueError as error:
@@ -75,7 +74,8 @@ def build_policy_package(
             "changes": [],
             "eligibility_rule": {"and": rules},
             "required_profile_fields": [
-                definition.model_dump(exclude_none=True) for definition in definitions
+                definition.model_dump(exclude_none=True)
+                for definition in definitions.values()
             ],
             "required_actions": [
                 {
@@ -91,7 +91,7 @@ def build_policy_package(
 
     reasons = [issue.message for issue in issues]
     if unresolved_fields:
-        reasons.append("승인되지 않은 프로필 필드가 있음")
+        reasons.append(f"승인되지 않은 프로필 필드: {', '.join(unresolved_fields)}")
     review_required = bool(reasons)
     node_logs = [
         AgentNodeLog(
@@ -108,10 +108,20 @@ def build_policy_package(
                 else "모든 정책 후보의 원문 근거를 확인했습니다."
             ),
         ),
+        AgentNodeLog(
+            node="field_resolution",
+            status="completed",
+            message=(
+                "새 프로필 필드를 관리자 검토 대상으로 제안했습니다."
+                if field_proposals
+                else "기존 프로필 필드의 승인 상태를 확인했습니다."
+            ),
+        ),
     ]
     return PolicyBuildResult(
         policy_package=package,
         evidence_issues=issues,
+        field_proposals=field_proposals,
         agent_run=AgentRun(
             run_id=run_id,
             notice_id=notice.source_id,
@@ -123,6 +133,33 @@ def build_policy_package(
             policy_id=policy_id if package is not None else None,
         ),
     )
+
+
+def _resolve_field_definition(
+    notice: SourceNotice,
+    condition: PolicyConditionDraft,
+    field_registry: FieldRegistry,
+) -> tuple[FieldDefinition, FieldDefinitionProposal | None]:
+    existing = field_registry.find(condition.field)
+    if existing is not None:
+        return existing, None
+
+    proposed = FieldDefinition(
+        key=condition.field,
+        label=condition.label,
+        data_type=condition.data_type,
+        question=condition.question,
+        sensitivity=condition.sensitivity,
+        validity_days=condition.validity_days,
+        review_status="pending",
+    )
+    proposal = field_registry.propose(
+        proposed,
+        f"공고 {notice.source_id}에서 새 조건 필드를 발견했습니다: {condition.label}",
+    )
+    if proposal is None:
+        raise RuntimeError(f"Unable to create field proposal: {condition.field}")
+    return proposal.proposed_field, proposal
 
 
 def _validate_evidence(

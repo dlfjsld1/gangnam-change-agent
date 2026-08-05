@@ -4,7 +4,7 @@
 
 - Current milestone: 공식 강남구 게시판 수집 adapter
 - Working: health API, 승인 정책 fixture API, 공통 계약, 공식 게시판 수집, HTML·PDF·HWPX 추출, 최후 복구용 OpenAI 이미지 OCR adapter, 동일 문서 변형 교차 검증, 구조화 정책 후보와 PolicyPackage 조립
-- In progress: 기존 FieldDefinition 재사용과 신규 FieldDefinitionProposal 연결
+- In progress: LangGraph 전체 노드·도구 실행 로그 연결
 - Not implemented: DB, LangGraph 실행
 - Blockers: none
 
@@ -17,7 +17,7 @@
 - [x] 공개 이미지·스캔 공고로 OpenAI OCR live smoke를 수행한다.
 - [x] OCR 결과를 HTML·다른 첨부 근거와 대조해 의미가 달라진 오독을 검토 대상으로 전환한다.
 - [x] 추출 결과를 EligibilityRule과 PolicyPackage 구조로 변환한다.
-- [ ] 기존 FieldDefinition 재사용 또는 FieldDefinitionProposal 생성을 연결한다.
+- [x] 기존 FieldDefinition 재사용 또는 FieldDefinitionProposal 생성을 연결한다.
 - [x] 문서 추출·근거 비교 로그와 review_required 사유를 AgentRun에 기록한다.
 - [ ] LangGraph 전체 노드·도구 실행 로그를 AgentRun에 누적한다.
 
@@ -43,6 +43,23 @@
 - docs/contracts/field-definition-proposal.schema.json
 
 ## Change history
+
+### 2026-08-05 — FieldDefinition 재사용과 신규 제안 연결
+
+#### Summary
+
+정책 조건의 field key를 registry에서 조회해 `approved` 정의는 재사용하고, 없는 필드는 `pending` FieldDefinitionProposal로 반환하도록 연결했다. 이미 pending 또는 rejected 상태인 필드는 중복 제안하지 않고 `AgentRun.unresolved_fields`에 유지한다.
+
+#### Contract impact
+
+기존 FieldDefinitionProposal과 AgentRun 계약을 그대로 사용한다.
+
+#### Validation
+
+- ruff check: passed
+- ruff format --check: passed
+- pytest: 35 passed
+- PolicyPackage와 FieldDefinitionProposal JSON Schema validation: passed
 
 ### 2026-08-05 — 구조화 정책 후보와 근거 검증
 
