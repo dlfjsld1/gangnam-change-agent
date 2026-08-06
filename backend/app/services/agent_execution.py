@@ -9,6 +9,11 @@ from app.schemas.agent_api import AgentRunResponse
 from app.schemas.agent_run import AgentRun
 from app.schemas.field_definition import FieldDefinition
 from app.schemas.source_notice import SourceNotice
+from app.services.attachment_archive import (
+    AttachmentArchiveUnavailable,
+    DisabledReviewAttachmentStore,
+    ReviewAttachmentStore,
+)
 from app.services.field_registry import FieldRegistry
 
 
@@ -31,10 +36,14 @@ class AgentExecutionService:
         *,
         runtime_factory: RuntimeFactory = create_default_runtime,
         graph_builder: GraphBuilder = build_change_agent_graph,
+        review_attachment_store: ReviewAttachmentStore | None = None,
     ) -> None:
         self._repository = repository
         self._runtime_factory = runtime_factory
         self._graph_builder = graph_builder
+        self._review_attachment_store = (
+            review_attachment_store or DisabledReviewAttachmentStore()
+        )
 
     def run(
         self,
@@ -63,6 +72,22 @@ class AgentExecutionService:
         notice = result.get("notice")
         if notice is not None and not isinstance(notice, SourceNotice):
             raise RuntimeError("Agent graph returned an invalid SourceNotice")
+        if notice is not None:
+            try:
+                notice = self._review_attachment_store.archive_notice(notice)
+            except AttachmentArchiveUnavailable as error:
+                reason = "; ".join(
+                    value
+                    for value in [agent_run.review_reason, str(error)]
+                    if value
+                )
+                agent_run = agent_run.model_copy(
+                    update={
+                        "status": "review_required",
+                        "review_required": True,
+                        "review_reason": reason,
+                    }
+                )
         response = AgentRunResponse(
             agent_run=agent_run,
             policy_package=policy_package,

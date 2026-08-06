@@ -4,12 +4,15 @@ from app.main import (
     app,
     get_agent_execution_service,
     get_agent_repository,
+    get_notice_discovery_service,
     get_policy_publish_service,
 )
 from app.repositories.agent_repository import ReviewConflict, ReviewNotFound
 from app.schemas.agent_api import AgentRunResponse
 from app.schemas.agent_run import AgentNodeLog, AgentRun
+from app.schemas.discovery_api import NoticeDiscoveryResponse
 from app.services.agent_execution import PreviousPolicyNotFound
+from app.services.notice_discovery import NoticeDiscoveryUnavailable
 
 
 client = TestClient(app)
@@ -36,6 +39,44 @@ def test_policy_package_can_be_loaded_by_id() -> None:
 
     assert response.status_code == 200
     assert response.json()["policy_id"] == "demo-policy-v2"
+
+
+def test_profile_field_catalog_returns_public_definitions_without_profile_values() -> (
+    None
+):
+    class FakeProfileFieldRepository:
+        def list_profile_field_catalog(self) -> list[dict[str, object]]:
+            return [
+                {
+                    "field_definition": {
+                        "key": "interest_categories",
+                        "label": "관심 분야",
+                        "data_type": "list",
+                        "allowed_values": [
+                            {"value": "youth_jobs", "label": "청년 · 일자리"}
+                        ],
+                        "question": "관심 있는 분야를 선택해 주세요.",
+                        "sensitivity": "low",
+                        "validity_days": None,
+                        "review_status": "approved",
+                    },
+                    "onboarding_group": "optional",
+                    "eligibility_usable": False,
+                    "display_order": 50,
+                }
+            ]
+
+    app.dependency_overrides[get_agent_repository] = (
+        lambda: FakeProfileFieldRepository()
+    )
+    try:
+        response = client.get("/api/profile-fields")
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert response.json()[0]["field_definition"]["key"] == "interest_categories"
+    assert "value" not in response.json()[0]
 
 
 class FakeExecutionService:
@@ -73,6 +114,32 @@ class FakeExecutionService:
             field_definition_proposals=[],
             field_definition_reviews=[],
             evidence_issues=[],
+        )
+
+
+class FakeNoticeDiscoveryService:
+    def __init__(self, *, unavailable: bool = False) -> None:
+        self.unavailable = unavailable
+        self.max_new_notices: int | None = None
+
+    def run(self, *, max_new_notices: int = 1) -> NoticeDiscoveryResponse:
+        self.max_new_notices = max_new_notices
+        if self.unavailable:
+            raise NoticeDiscoveryUnavailable("board unavailable")
+        return NoticeDiscoveryResponse(
+            discovered_count=4,
+            already_processed_count=3,
+            processed_runs=[
+                AgentRun(
+                    run_id="run-discovery",
+                    notice_id="61923",
+                    status="review_required",
+                    node_logs=[],
+                    review_required=True,
+                    review_reason="관리자 검토 필요",
+                    unresolved_fields=[],
+                )
+            ],
         )
 
 
@@ -209,6 +276,39 @@ def test_agent_run_endpoint_executes_service() -> None:
         "https://www.gangnam.go.kr/notice/view.do?id=61922",
         "demo-policy-v2",
     )
+
+
+def test_notice_discovery_endpoint_runs_crawler_with_default_limit() -> None:
+    service = FakeNoticeDiscoveryService()
+    app.dependency_overrides[get_notice_discovery_service] = lambda: service
+    try:
+        response = client.post("/api/notice-discovery-runs", json={})
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert response.json()["processed_runs"][0]["run_id"] == "run-discovery"
+    assert service.max_new_notices == 1
+
+
+def test_notice_discovery_endpoint_rejects_invalid_limit() -> None:
+    response = client.post(
+        "/api/notice-discovery-runs",
+        json={"max_new_notices": 6},
+    )
+
+    assert response.status_code == 422
+
+
+def test_notice_discovery_endpoint_reports_board_failure() -> None:
+    service = FakeNoticeDiscoveryService(unavailable=True)
+    app.dependency_overrides[get_notice_discovery_service] = lambda: service
+    try:
+        response = client.post("/api/notice-discovery-runs", json={})
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 503
 
 
 def test_agent_run_endpoint_rejects_unapproved_host() -> None:

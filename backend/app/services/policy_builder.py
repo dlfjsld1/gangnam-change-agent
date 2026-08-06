@@ -34,6 +34,7 @@ def build_policy_package(
             label=condition.label,
             data_type=condition.data_type,
             question=condition.question,
+            allowed_values=condition.allowed_values,
             sensitivity=condition.sensitivity,
             validity_days=condition.validity_days,
             review_status="pending",

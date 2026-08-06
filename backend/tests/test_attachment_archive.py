@@ -9,6 +9,7 @@ from app.schemas.source_notice import SourceAttachment, SourceNotice
 from app.services.attachment_archive import (
     AttachmentPrivacyRejected,
     S3PublicAttachmentArchive,
+    S3ReviewAttachmentStore,
 )
 
 
@@ -28,6 +29,10 @@ class FakeS3Client:
 
     def put_object(self, **kwargs: Any) -> None:
         self.objects.append(kwargs)
+
+    def generate_presigned_url(self, operation: str, **kwargs: Any) -> str:
+        key = kwargs["Params"]["Key"]
+        return f"https://signed.example.com/{key}?expires={kwargs['ExpiresIn']}"
 
 
 def _notice(filename: str = "지원사업 안내.pdf") -> SourceNotice:
@@ -119,3 +124,35 @@ def test_archive_rejects_sensitive_filename_before_upload() -> None:
         )
 
     assert client.objects == []
+
+
+def test_review_archive_uploads_all_attachments_and_adds_signed_urls() -> None:
+    downloader = FakeDownloader(
+        {
+            "https://www.gangnam.go.kr/files/policy.pdf": b"policy",
+            "https://www.gangnam.go.kr/files/reference.pdf": b"reference",
+        }
+    )
+    client = FakeS3Client()
+    store = S3ReviewAttachmentStore(
+        bucket="review-bucket",
+        prefix="review-attachments",
+        client=client,
+        downloader=downloader,
+    )
+
+    archived = store.archive_notice(_notice())
+    signed = store.add_review_urls(archived)
+
+    assert len(client.objects) == 2
+    assert all(
+        attachment.storage_key.startswith("review-attachments/")
+        for attachment in archived.attachments
+        if attachment.storage_key
+    )
+    assert all(attachment.sha256 for attachment in archived.attachments)
+    assert all(
+        attachment.review_url.startswith("https://signed.example.com/")
+        for attachment in signed.attachments
+        if attachment.review_url
+    )

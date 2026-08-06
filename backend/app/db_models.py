@@ -75,6 +75,19 @@ class PolicyPackageRecord(Base):
     )
 
 
+class CanonicalFieldDefinitionRecord(Base):
+    __tablename__ = "canonical_field_definitions"
+
+    field_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    onboarding_group: Mapped[str] = mapped_column(String(32), index=True)
+    eligibility_usable: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    display_order: Mapped[int] = mapped_column(Integer)
+    payload: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utc_now
+    )
+
+
 class FieldDefinitionProposalRecord(Base):
     __tablename__ = "field_definition_proposals"
 

@@ -34,6 +34,7 @@ Gangnam Change Agent는 강남구 공고와 첨부문서의 변경을 Agent가 �
 - 시민 프로필은 Record<string, ProfileValue>로 IndexedDB에만 저장한다.
 - 시민 판정은 YES, NO, UNKNOWN, STALE만 사용하며 LLM이 판정하지 않는다.
 - 새 필드는 Agent가 제안하고 관리자 승인 후에만 시민 앱에 배포한다.
+- 팀이 승인한 기본 프로필 필드 정의는 공개 catalog API로 제공하되 시민 답변은 기기에만 저장한다.
 - HumanHandoff는 별도 API가 아니라 AgentRun의 review_required, review_reason, unresolved_fields로 표현한다.
 
 ## Privacy boundary

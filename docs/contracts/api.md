@@ -6,6 +6,25 @@
 
 응답은 status가 ok인 JSON 객체다.
 
+## GET /api/profile-fields
+
+시민 PWA 온보딩에서 사용하는 승인된 canonical profile field 목록을
+`display_order` 순서로 반환한다. 서버는 필드 정의만 제공하며 시민이 입력한 값은 이
+API를 포함한 어떤 요청으로도 받지 않는다.
+
+각 항목은 다음 메타 정보를 포함한다.
+
+- `field_definition`: 승인된 FieldDefinition
+- `onboarding_group`: 첫 설정의 기본 질문인 `core` 또는 선택 질문인 `optional`
+- `eligibility_usable`: Agent가 자격 조건 canonical field로 재사용할 수 있는지
+- `display_order`: PWA 표시 순서
+
+기본 catalog는 `residence`, `age`, `employment_status`,
+`frequent_bus_stops`, `interest_categories`다. `frequent_bus_stops`는 주변 영향
+확인용이고 `interest_categories`는 추천·정렬용이므로 둘 다
+`eligibility_usable=false`이며 정책의 `required_profile_fields`에 자동으로 넣지
+않는다. `interest_categories`의 시민 답변은 IndexedDB에만 저장한다.
+
 ## GET /api/policy-packages
 
 승인된 review.status = approved 정책 패키지만 배열로 반환한다.
@@ -51,6 +70,37 @@
 실행 중 수집·추출·검증이 실패해도 AgentRun이 생성됐다면 HTTP 201 응답의
 `agent_run.status`를 `failed` 또는 `review_required`로 반환하고 DB에 기록한다.
 
+## POST /api/notice-discovery-runs
+
+관리자가 `새 공고 확인`을 요청할 때 강남구 공식 게시판 목록을 즉시 확인한다. 주기
+스케줄러 계약은 아니다.
+
+요청:
+
+```json
+{
+  "max_new_notices": 1
+}
+```
+
+- 기본값은 1, 최대값은 5다.
+- 이미 DB에 저장된 원본 공고 URL은 Agent를 다시 실행하지 않는다.
+- 새 공고는 최신 목록 순서로 제한 개수만 Agent 실행한다.
+- 시민 프로필이나 시민별 판정 결과를 요청·저장하지 않는다.
+
+응답:
+
+```json
+{
+  "discovered_count": 12,
+  "already_processed_count": 3,
+  "processed_runs": []
+}
+```
+
+게시판 목록 확인 자체가 실패하면 503을 반환한다. Agent 처리 결과가 failed 또는
+review_required여도 생성된 AgentRun은 `processed_runs`에 포함한다.
+
 ## 관리자 최소 계약
 
 - GET /api/agent-runs
@@ -60,6 +110,7 @@
 - GET /api/admin/policy-packages/{policy_id}
 - POST /api/field-definition-reviews/{review_id}/approve
 - POST /api/field-definition-reviews/{review_id}/reject
+- POST /api/field-definition-reviews/{review_id}/edit (`approved_field`를 검증한 뒤 승인)
 - GET /api/agent-runs/{run_id}
 - POST /api/policy-packages/{policy_id}/approve
 - POST /api/policy-packages/{policy_id}/reject
@@ -92,6 +143,18 @@
 ```json
 {
   "agent_run": {},
+  "source_notice": {
+    "attachments": [
+      {
+        "filename": "지원사업 안내.pdf",
+        "url": "https://www.gangnam.go.kr/original.pdf",
+        "storage_key": "review-attachments/gangnam_public_notice/61922/abc123-지원사업 안내.pdf",
+        "review_url": "https://s3.ap-northeast-2.amazonaws.com/...signed...",
+        "public_url": null,
+        "sha256": "..."
+      }
+    ]
+  },
   "policy_package": {},
   "field_definition_proposals": [],
   "field_definition_reviews": []
@@ -99,6 +162,8 @@
 ```
 
 이 관리자 조회 API도 시민 프로필이나 시민별 판정 결과를 반환하지 않는다.
+`review_url`은 S3 검토 저장소가 설정된 환경에서만 반환하는 단기 presigned URL이며
+DB에 저장하지 않는다. 파싱 실패 여부와 관계없이 수집된 공식 첨부에 제공한다.
 
 HumanHandoff 별도 API는 만들지 않는다. 사람 검토 필요 상태는 AgentRun의 review_required, review_reason, unresolved_fields로 전달한다.
 
@@ -106,6 +171,10 @@ HumanHandoff 별도 API는 만들지 않는다. 사람 검토 필요 상태는 A
 
 승인 요청은 관리자가 수정한 canonical field를 선택적으로 포함한다. 생략하면 제안된
 필드를 승인한다.
+
+`approved_field`에는 key와 label뿐 아니라 시민에게 표시할 `question`과 enum의
+`allowed_values`도 수정해 전달할 수 있다. enum 선택지는 판정용 `value`와 시민용
+`label`을 모두 포함해야 하며 빈 선택지를 승인하지 않는다.
 
 ```json
 {

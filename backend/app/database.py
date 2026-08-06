@@ -1,16 +1,16 @@
+import os
 from collections.abc import Iterator
 from contextlib import contextmanager
-import os
 from pathlib import Path
 
 from sqlalchemy import Engine, create_engine
 from sqlalchemy.engine import make_url
 from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.pool import StaticPool
 
 from app.db_models import Base
 
-
-DEFAULT_DATABASE_URL = "sqlite:///./storage/gangnam-change-agent.db"
+DEFAULT_DATABASE_URL = "sqlite:///./gangnam-change-agent.db"
 
 
 def configured_database_url() -> str:
@@ -21,10 +21,18 @@ def create_database_engine(database_url: str | None = None) -> Engine:
     url = database_url or configured_database_url()
     parsed_url = make_url(url)
     connect_args: dict[str, object] = {}
+    engine_options: dict[str, object] = {}
     if parsed_url.get_backend_name() == "sqlite":
         connect_args["check_same_thread"] = False
         _prepare_sqlite_directory(parsed_url.database)
-    return create_engine(url, connect_args=connect_args, pool_pre_ping=True)
+        if parsed_url.database == ":memory:":
+            engine_options["poolclass"] = StaticPool
+    return create_engine(
+        url,
+        connect_args=connect_args,
+        pool_pre_ping=True,
+        **engine_options,
+    )
 
 
 class Database:

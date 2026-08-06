@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from app.schemas.agent_run import AgentRun
 from app.schemas.field_definition import (
     FieldDataType,
+    FieldOption,
     FieldDefinitionProposal,
     FieldDefinitionReview,
     Sensitivity,
@@ -25,6 +26,7 @@ class PolicyConditionDraft(BaseModel):
     minimum: float | None
     maximum: float | None
     data_type: FieldDataType
+    allowed_values: list[FieldOption]
     question: str = Field(min_length=1)
     sensitivity: Sensitivity
     validity_days: int | None
