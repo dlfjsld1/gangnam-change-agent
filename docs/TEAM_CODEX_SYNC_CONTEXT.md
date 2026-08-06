@@ -101,7 +101,10 @@ Task 수행자는 다음 순서만 읽고 구현을 시작한다.
    ├─ contracts/
    │  ├─ policy-package.schema.json
    │  ├─ field-definition.schema.json
+   │  ├─ profile-field-catalog-item.schema.json
    │  └─ api.md
+   ├─ deployment/
+   │  └─ BACKEND_CONTAINER_HANDOFF.md
    └─ worklogs/
       ├─ agent-backend/
       │  └─ WORKLOG.md
@@ -620,10 +623,11 @@ docs/
 
 ## 배포
 
-- AWS보다 로컬 end-to-end 동작을 먼저 확인한다.
-- Kubernetes, 복잡한 VPC, Terraform 등 MVP에 불필요한 인프라는 추가하지 않는다.
+- 로컬 검증 후 현재 Terraform으로 관리하는 CloudFront, 비공개 S3, public ALB, private ECS Fargate, private RDS PostgreSQL, ECR, Secrets Manager와 NAT Gateway 구성을 사용한다.
+- 현재 구조를 벗어난 Kubernetes나 별도 배포 플랫폼은 팀 합의 없이 추가하지 않는다.
 - `.env.example`, CORS, API base URL, health check, HTTPS를 확인한다.
-- 네트워크 실패에 대비한 demo fixture와 화면 증빙을 유지한다.
+- 네트워크 실패 동작은 담당 Work log와 현재 구현을 따른다. 시민 PWA는 승인 정책 API 실패를 사용자에게 표시하고 정책 fixture로 대체하지 않으며, 관리자 화면의 기존 fixture fallback을 변경하려면 별도 합의한다.
+- Git push 자동 배포는 없으므로 프론트는 build·S3 sync·CloudFront invalidation, 백엔드는 Docker build·ECR push·ECS rolling deployment를 수행한다.
 - 백엔드 컨테이너와 AWS 배포 전 `docs/deployment/BACKEND_CONTAINER_HANDOFF.md`를 읽고 현재 준비 상태와 미구현 항목을 구분한다.
 
 ## Git 협업 세부사항

@@ -2,18 +2,12 @@
 
 ## Current status
 
-- Admin API integration now covers run list/detail, field reviews, and policy package approve/reject.
-
-- AWS backend deployed: ECS Fargate + ALB + CloudFront, https://d25409t9vvq1vj.cloudfront.net
-
-- Current milestone: fixture 기반 관리자 검토 화면
-- Working: Vite 앱, FieldDefinitionReview 목록·상세, evidence·canonical field 후보, 승인·수정·반려, AgentRun 로그, API 실패 fallback
-- In progress: 실제 Backend 관리자 API 연결
-- S3 공개 첨부 archive용 Terraform과 Admin 원본·공개 URL 표시 구현 완료, AWS apply 미실행
-- Working: Vite 앱, FieldDefinitionReview 목록·상세, evidence·canonical field 후보, 승인·수정·반려, AgentRun 로그, 수동 새 공고 확인 버튼, API 실패 fallback
-- In progress: 실제 Backend 관리자 API 연결과 배포 환경 확인
-- Not implemented: 승인된 정책의 시민 앱 통합 확인, 배포
-- Blockers: 계약에 맞춘 관리자 API 구현 필요
+- Current milestone: 최신 필드 검토·비공개 첨부 흐름 재배포와 전체 smoke
+- Working: 실제 관리자 API 연결, FieldDefinitionReview 승인·수정·반려, 시민 질문·enum 선택지 편집, AgentRun 로그, 수동 새 공고 확인, 정책 Publish, 검토·공개 첨부 링크, CloudFront 관리자 웹
+- Deployed baseline: ECS Fargate + ALB + CloudFront Backend API, RDS PostgreSQL, 관리자·시민 CloudFront, 공개 첨부 S3
+- In progress: `review-attachments`와 최신 enum 편집 변경을 포함한 이미지·정적 웹 재배포 및 수집 → 승인 → 시민 반영 smoke
+- Not implemented: 관리자 mutation API 운영 인증·접근 제한, Git push 자동 배포
+- Blockers: 최신 Agent Backend PR의 main 병합 후 배포 필요
 
 ## Next actions
 
@@ -22,30 +16,34 @@
 - [x] 승인·수정·반려 동작을 로컬 fixture 상태로 먼저 연결한다.
 - [x] AgentRun의 review_required, review_reason, unresolved_fields와 실행 로그를 표시한다.
 - [x] 관리자 API 준비 후 fixture adapter를 실제 API adapter로 연결한다.
-- [ ] 관리자 API 준비 후 fixture adapter를 실제 API adapter로 교체한다.
+- [x] 관리자 API adapter를 실제 실행·검토·정책 API에 연결한다.
 - [x] 새 공고 확인 버튼을 수동 크롤링 API에 연결하고 처리 결과를 새로고침한다.
 - [ ] 승인된 PolicyPackage 공개 흐름과 시민 PWA 연결을 검증한다.
-- [ ] 로컬 통합 확인 후 AWS에 관리자 웹·시민 PWA·백엔드를 배포한다.
+- [x] 관리자 웹·시민 PWA·백엔드 기본 구성을 AWS에 배포한다.
+- [x] enum 질문의 판정값과 시민 표시 문구를 추가·수정·삭제해 승인한다.
+- [ ] 최신 Backend image와 Admin build를 배포하고 비공개 검토 첨부·enum 승인·시민 공개를 smoke한다.
 
 ## Completion criteria
 
 - 관리자가 제안 필드의 근거를 보고 승인·수정·반려할 수 있다.
 - AgentRun의 사람 검토 사유와 미해결 필드가 화면에 표시된다.
 - 승인된 정책만 시민 API에 공개되는 흐름을 확인할 수 있다.
-- API 미준비 또는 네트워크 실패 시 demo fixture fallback이 동작한다.
+- API 연결 실패 상태가 관리자에게 명확히 표시된다.
 - 관리자 화면은 브라우저에서, 시민 화면은 설치 가능한 PWA로 동작한다.
 - 관련 build와 로컬 end-to-end smoke check가 통과한다.
 
 ## Dependencies
 
-- 첫 네 작업은 현재 계약과 fixture만으로 진행할 수 있다.
-- 실제 승인·AgentRun 연동은 백엔드 관리자 API가 필요하다.
-- AWS 배포는 로컬 end-to-end 흐름이 동작한 뒤 시작한다.
+- 최신 배포는 Agent Backend PR 병합 후 Docker image와 Admin 정적 build를 함께 갱신한다.
+- 시민 profile catalog 소비는 Citizen PWA 담당 작업이며 관리자 UI ownership으로 가져오지 않는다.
 
 ## Current contracts
 
 - docs/contracts/policy-package.schema.json
 - docs/contracts/field-definition-proposal.schema.json
+- docs/contracts/field-definition-review.schema.json
+- docs/contracts/api.md
+- docs/contracts/PUBLIC_ATTACHMENT_FRONTEND_INTEGRATION.md
 
 ## Change history
 

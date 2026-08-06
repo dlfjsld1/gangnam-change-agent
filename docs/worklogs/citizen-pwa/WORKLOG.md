@@ -2,11 +2,11 @@
 
 ## Current status
 
-- Current milestone: 온보딩부터 정책 상세까지 이어지는 시민 PWA 데모
+- Current milestone: 백엔드 canonical profile catalog 기반 온보딩 전환
 - Working: manifest, service worker, 동적 프로필 타입, IndexedDB 저장, 재귀 판정 matcher, 온보딩·질문 답변과 UNKNOWN/STALE 재판정, 카드 피드와 로컬 숨기기, 승인 정책 API 연결, 입력 정보 요약과 선택 관심 분야 저장
-- In progress: 홈 화면 피드백 반영과 관심 분야를 여러 공고 정렬에 연결할 시점 검토
-- Not implemented: 없음
-- Blockers: 없음
+- In progress: `GET /api/profile-fields` 소비, 임시 관심 분야 정의 제거, core·optional 온보딩 연결
+- Not implemented: `잘 모르겠어요` 선택 시 미저장·UNKNOWN 유지, `frequent_bus_stops` 목록 입력, 표준 topic code 기반 관심 공고 정렬
+- Blockers: Agent Backend의 profile catalog 변경이 main에 병합되고 배포 API에 반영돼야 함
 
 ## Next actions
 
@@ -37,6 +37,11 @@
 - [x] 내 정보 상단의 중복 안내를 줄이고 일반 텍스트 색을 차콜 회색으로 정리한다.
 - [x] 내 정보 관리 동작을 과한 강조 카드 대신 하나의 설정 목록으로 단순화한다.
 - [x] 발표용 리모컨과 목업 공고 전환을 제거하고, 승인 정책 API 결과만 시민 화면에 표시한다.
+- [ ] `GET /api/profile-fields`를 불러와 `field_definition`과 `display_order`로 온보딩 질문을 구성한다.
+- [ ] `core` 필드는 기본정보 단계, `optional`의 `interest_categories`는 선택 입력 단계에 연결하고 로컬 하드코딩을 제거한다.
+- [ ] enum의 `해당 사항 없음`은 실제 값으로 저장하고, `잘 모르겠어요`는 값을 저장하지 않아 `UNKNOWN`을 유지한다.
+- [ ] `frequent_bus_stops`를 문자열 배열로 IndexedDB에만 저장한다.
+- [ ] profile catalog API 실패 상태를 개인정보 전송 없이 사용자에게 안내하고 관련 test·production build를 통과한다.
 
 ## Completion criteria
 
@@ -57,6 +62,8 @@
 
 - docs/contracts/policy-package.schema.json
 - docs/contracts/field-definition.schema.json
+- docs/contracts/profile-field-catalog-item.schema.json
+- docs/contracts/api.md
 
 ## Change history
 

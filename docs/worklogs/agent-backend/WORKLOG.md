@@ -2,11 +2,11 @@
 
 ## Current status
 
-- Current milestone: PostgreSQL 배포 통합 준비
+- Current milestone: 기본 프로필 field catalog 인계와 최신 AWS 통합 smoke 준비
 - Working: health API, 실제 Agent 실행·조회 API, 관리자 수동 새 공고 확인 API, 기본 프로필 field catalog API, 공통 계약, 공식 게시판 수집, HTML·PDF·HWPX 추출, 최후 복구용 OpenAI 이미지 OCR adapter, 동일 문서 변형 교차 검증, 문맥을 포함한 동적 질문·선택지 생성, 구조화 정책 후보와 PolicyPackage 조립, Field Registry 해석, Human Review 결과 생성, LangGraph 실행 흐름과 AgentRun 로그 누적, SQLite/PostgreSQL 공용 저장소 계층, 관리자 실행·검토·정책 목록과 상세 조회 API, 관리자 필드 검토 API, 정책 승인·반려와 승인 정책 Publish, 승인된 공개 근거 첨부 S3 archive
-- In progress: 관리자·통합 담당의 컨테이너와 PostgreSQL 연결 지원, 배포 전체 흐름 smoke 준비
-- Not implemented: PostgreSQL live integration, 관리자 API 인증·접근 제한, 새 공고 주기 실행
-- Blockers: none
+- In progress: Citizen PWA의 profile catalog 소비 지원, 최신 Agent·관리자 변경의 배포 전체 흐름 smoke 준비
+- Not implemented: 관리자 mutation API 인증·접근 제한, 새 공고 주기 실행, 바이너리 HWP parser
+- Blockers: 최신 변경의 main 병합·AWS 재배포와 Citizen PWA 연동은 각 담당 작업에 의존
 
 ## Next actions
 
@@ -28,7 +28,9 @@
 - [x] 관리자 화면용 AgentRun·검토·PolicyPackage 목록과 실행 상세 조회 API를 연결한다.
 - [x] 승인된 공개 근거 첨부를 S3 고정 URL로 제공하는 Publish 흐름을 연결한다.
 - [x] 관리자 요청 시 공식 게시판을 크롤링하고 새 공고를 Agent로 실행하는 API를 연결한다.
-- [ ] 배포 PostgreSQL에서 Agent 실행·검토·Publish smoke를 수행한다.
+- [x] PWA 기본·선택 온보딩용 승인 canonical field catalog API를 제공한다.
+- [x] 문맥형 질문과 enum 선택지를 생성하고 관리자 수정 승인 payload에 보존한다.
+- [ ] 최신 이미지를 배포한 뒤 PostgreSQL에서 Agent 실행·검토·Publish smoke 결과를 확인한다.
 
 ## Completion criteria
 
@@ -43,13 +45,16 @@
 
 - 공식 소스와 데모 공고는 D-003으로 확정됐다.
 - 공유 필드나 연산자 변경은 구현 전에 `docs/contracts/`에서 합의해야 한다.
-- 관리자 API 연동 전까지 fixture 또는 저장소 인터페이스를 유지한다.
+- Citizen PWA는 `GET /api/profile-fields`의 `core`·`optional` 구분과 `field_definition`을 소비해야 한다.
+- `frequent_bus_stops`와 `interest_categories`는 자격 판정 registry에서 제외한다.
 
 ## Current contracts
 
 - docs/contracts/policy-package.schema.json
 - docs/contracts/field-definition.schema.json
 - docs/contracts/field-definition-proposal.schema.json
+- docs/contracts/profile-field-catalog-item.schema.json
+- docs/contracts/api.md
 
 ## Change history
 
