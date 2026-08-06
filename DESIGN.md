@@ -36,7 +36,7 @@
 - 큰 제목과 짧은 문장으로 현재 상태를 먼저 알린다.
 - 정책 하나를 하나의 큰 카드로 보여 주고, 한 화면에 한 가지 다음 행동만 강조한다.
 - 숨기기와 프로필 저장은 기기 안에서만 처리하며 그 사실을 숨기지 않는다.
-- Tradeoffs: 승인 정책 API에 연결할 수 없으면 임의의 공고를 대신 보여 주지 않고, 연결 실패 안내를 표시한다.
+- Tradeoffs: 이 발표 전용 브랜치에서는 실제 API 연결 실패 시 fixture를 사용하며, 리모컨으로 주제별 MOCK 공고와 4개 공고 카드 회전을 시연한다.
 
 ## Visual language
 
@@ -75,7 +75,7 @@
 - Error: 저장 실패 시 현재 프로필을 유지하고 안내한다.
 - Success: 답변 저장 뒤 상태와 다음 카드 행동을 즉시 갱신한다.
 - Disabled: 저장 중에는 답변 버튼을 비활성화한다.
-- Offline/slow network, if applicable: 공고 API에 연결할 수 없다는 안내를 표시하고, 기기에 저장한 개인정보는 유지한다.
+- Offline/slow network, if applicable: API 연결이 없을 때도 fixture와 발표용 MOCK 공고로 시연 흐름을 확인할 수 있다.
 
 ## Content voice
 

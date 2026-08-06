@@ -16,14 +16,60 @@ import { recordAnswer } from "./profile/answerProfile";
 import type { FieldDefinition, LocalProfile } from "./profile/dynamicProfile";
 import {
   clearProfile,
+  loadDemoProfile,
   loadProfile,
+  saveDemoProfile,
   saveProfile,
 } from "./profile/profileStore";
+import type { DemoProfileName } from "./profile/profileStore";
 import policyFixture from "../../../demo-data/approved-policy.json";
+import userA from "../../../demo-data/user-a.json";
+import userB from "../../../demo-data/user-b.json";
 
 
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 const basePolicyFixture = policyFixture as PolicyPackage;
+const fixturePolicies = [basePolicyFixture];
+const demoEligibilityRule = {
+  field: "residence",
+  operator: "exists",
+  value: true,
+} satisfies PolicyPackage["eligibility_rule"];
+const demoProfileLabels = {
+  A: "새로운 혜택",
+  B: "새로운 정책",
+  C: "교통상황",
+} satisfies Record<DemoProfileName, string>;
+const mockFeedPolicies: PolicyPackage[] = ([
+  ["mock-benefit-v1", "강남구 청년 문화 바우처 확대", "복지 · 생활", "연간 바우처", "5만원", "10만원", "청년의 문화생활을 위한 바우처 혜택이 확대된 발표용 MOCK 공고예요.", "지원 대상 확인", "2026-09-12"],
+  ["mock-housing-v1", "청년 월세 지원 기준 변경", "주거 · 생활", "월 지원 한도", "20만원", "25만원", "월세 지원 한도와 신청 기간이 조정된 발표용 MOCK 공고예요.", "임대차 계약서 준비", "2026-09-18"],
+  ["mock-traffic-v1", "강남역 심야버스 운행 확대", "교통 · 시설", "심야버스 운행", "23시까지", "24시까지", "강남역을 지나는 심야버스의 운행 시간이 늘어난 발표용 MOCK 공고예요.", "내 버스 노선 운행 시간 확인", null],
+  ["mock-traffic-control-v1", "도곡로 주말 교통 통제 안내", "교통 · 시설", "통제 구간", "없음", "도곡로 일부", "도로 정비 기간의 우회 경로를 안내하는 발표용 MOCK 공고예요.", "출발 전 우회 경로 확인", "2026-09-25"],
+] as Array<[string, string, string, string, string, string, string, string, string | null]>).map(([policy_id, title, category, label, before, after, summary, action, deadline_at], index) => ({
+  ...basePolicyFixture,
+  policy_id,
+  title,
+  category,
+  eligibility_rule: demoEligibilityRule,
+  required_profile_fields: basePolicyFixture.required_profile_fields.slice(0, 1),
+  deadline_at,
+  summary,
+  changes: [{ change_id: `${policy_id}-change`, label, before, after }],
+  required_actions: [{ action_id: `${policy_id}-action`, label: action, priority: 1 }],
+  evidence: [{
+    evidence_id: `${policy_id}-evidence`,
+    source_type: "HTML",
+    document_name: `${title} (MOCK)`,
+    location: "안내 내용",
+    quote: `${label}이 ${after}(으)로 변경됩니다.`,
+    source_url: `https://www.gangnam.go.kr/notice/view.do?not_ancmt_mgt_no=MOCK-2026-00${index + 1}`,
+  }],
+})) satisfies PolicyPackage[];
+const demoProfilePolicies = {
+  A: mockFeedPolicies[0],
+  B: mockFeedPolicies[1],
+  C: mockFeedPolicies[2],
+} satisfies Record<DemoProfileName, PolicyPackage>;
 const interestField = {
   key: "interest_categories",
   label: "관심 분야",
@@ -40,6 +86,16 @@ const interestField = {
   sensitivity: "low",
   review_status: "approved",
 } satisfies FieldDefinition;
+const demoProfiles = {
+  A: toLocalProfile(userA.profile),
+  B: toLocalProfile(userB.profile),
+  C: {
+    residence: { value: "강남구", updatedAt: "2026-08-05", validUntil: "2027-08-05", source: "user_input", sensitivity: "medium" },
+    age: { value: 28, updatedAt: "2026-08-05", validUntil: "2027-08-05", source: "user_input", sensitivity: "low" },
+    employment_status: { value: "unemployed", updatedAt: "2026-08-05", validUntil: "2026-11-05", source: "user_input", sensitivity: "medium" },
+    military_service_status: { value: "completed", updatedAt: "2026-08-05", validUntil: "2027-08-05", source: "user_input", sensitivity: "medium" },
+  } satisfies LocalProfile,
+};
 function today(): string {
   return new Date().toISOString().slice(0, 10);
 }
@@ -58,15 +114,18 @@ async function fetchPolicyPackages(): Promise<Response> {
 
 export function App() {
   const [profile, setProfile] = useState<LocalProfile>({});
-  const [policies, setPolicies] = useState<PolicyPackage[]>([]);
-  const [policySource, setPolicySource] = useState<"api" | "unavailable">("unavailable");
+  const [policies, setPolicies] = useState<PolicyPackage[]>(fixturePolicies);
+  const [policySource, setPolicySource] = useState<"api" | "fixture">("fixture");
   const [ready, setReady] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [hiddenPolicyIds, setHiddenPolicyIds] = useState<string[]>([]);
   const [favoritePolicyIds, setFavoritePolicyIds] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState("home");
+  const [demoProfileName, setDemoProfileName] = useState<DemoProfileName>();
+  const [demoProfile, setDemoProfile] = useState<LocalProfile>();
   const [selectedPolicy, setSelectedPolicy] = useState<PolicyPackage>();
   const [onboardingMode, setOnboardingMode] = useState<"start" | "edit" | "interests" | "preview">();
+  const [isMockFeedEnabled, setIsMockFeedEnabled] = useState(false);
   const [activeFeedIndex, setActiveFeedIndex] = useState(0);
   const [carouselCardHeight, setCarouselCardHeight] = useState(0);
   const [isFeedTransitioning, setIsFeedTransitioning] = useState(false);
@@ -79,7 +138,7 @@ export function App() {
       loadProfile(),
       loadHiddenPolicyIds(),
       loadFavoritePolicyIds(),
-      loadApprovedPolicyPackages(fetchPolicyPackages),
+      loadApprovedPolicyPackages(fetchPolicyPackages, fixturePolicies),
     ])
       .then(([savedProfile, savedHiddenPolicyIds, savedFavoritePolicyIds, policyResult]) => {
         setProfile(savedProfile);
@@ -94,8 +153,12 @@ export function App() {
       .finally(() => setReady(true));
   }, []);
 
-  const activeProfile = profile;
-  const displayPolicies = policies;
+  const activeProfile = demoProfile ?? profile;
+  const displayPolicies = isMockFeedEnabled
+    ? mockFeedPolicies
+    : demoProfileName
+      ? [demoProfilePolicies[demoProfileName]]
+      : policies;
   const availablePolicies = useMemo(
     () => displayPolicies.filter((policy) => !hiddenPolicyIds.includes(policy.policy_id)),
     [displayPolicies, hiddenPolicyIds],
@@ -116,7 +179,7 @@ export function App() {
 
   useEffect(() => {
     setActiveFeedIndex(0);
-  }, [activeTab, feedPolicies.length]);
+  }, [activeTab, feedPolicies.length, isMockFeedEnabled]);
 
   useEffect(() => {
     const card = currentFeedCardRef.current;
@@ -190,6 +253,11 @@ export function App() {
     setIsSaving(true);
     const nextProfile = recordAnswer(activeProfile, field, value, today());
     try {
+      if (demoProfileName) {
+        await saveDemoProfile(demoProfileName, nextProfile);
+        setDemoProfile(nextProfile);
+        return;
+      }
       await saveProfile(nextProfile);
       setProfile(nextProfile);
     } finally {
@@ -229,6 +297,8 @@ export function App() {
     setProfile({});
     setHiddenPolicyIds([]);
     setFavoritePolicyIds([]);
+    setDemoProfileName(undefined);
+    setDemoProfile(undefined);
     setActiveTab("home");
     setOnboardingMode("start");
   }
@@ -237,6 +307,19 @@ export function App() {
     await saveProfile(nextProfile);
     setProfile(nextProfile);
     setActiveTab(onboardingMode === "edit" || onboardingMode === "interests" ? "profile" : "home");
+    setOnboardingMode(undefined);
+  }
+
+  async function selectDemoProfile(name: DemoProfileName) {
+    const savedProfile = await loadDemoProfile(name);
+    const nextProfile = savedProfile ?? demoProfiles[name];
+    if (!savedProfile) {
+      await saveDemoProfile(name, nextProfile);
+    }
+    setDemoProfileName(name);
+    setDemoProfile(nextProfile);
+    setIsMockFeedEnabled(false);
+    setActiveTab("home");
     setOnboardingMode(undefined);
   }
 
@@ -250,13 +333,13 @@ export function App() {
           mode={onboardingMode}
           onComplete={completeProfile}
           onClose={onboardingMode !== "start" ? () => setOnboardingMode(undefined) : undefined}
-          policy={displayPolicies[0] ?? basePolicyFixture}
+          policy={displayPolicies[0] ?? fixturePolicies[0]}
         />
       ) : <>
       {activeTab === "profile" ? (
         <ProfilePage
           key="profile"
-          fields={(displayPolicies[0] ?? basePolicyFixture).required_profile_fields}
+          fields={(displayPolicies[0] ?? fixturePolicies[0]).required_profile_fields}
           onEdit={() => setOnboardingMode("edit")}
           onEditInterests={() => setOnboardingMode("interests")}
           onPreviewIntro={() => setOnboardingMode("preview")}
@@ -301,6 +384,8 @@ export function App() {
           feedTouchStartY.current = event.touches[0].clientY;
         }}
       >
+        {isMockFeedEnabled && ready && <p className="fixture-note">발표용 MOCK 공고 4개를 보여드리고 있어요.</p>}
+        {!isMockFeedEnabled && policySource === "fixture" && ready && <p className="fixture-note">데모 정책을 보여드리고 있어요.</p>}
         {!ready && <p className="loading-copy">내 정보를 불러오는 중입니다.</p>}
 
         {ready && isCardPager && activeFeedPolicy && nextFeedPolicy ? (
@@ -350,14 +435,7 @@ export function App() {
             title="아직 담아둔 공고가 없어요"
           />
         )}
-        {ready && policySource === "unavailable" && (
-          <EmptyFeed
-            description="잠시 후 다시 시도해 주세요. 내 정보는 이 기기에 안전하게 남아 있어요."
-            kind="notice"
-            title="공고를 불러오지 못했어요"
-          />
-        )}
-        {ready && policySource === "api" && displayPolicies.length === 0 && (
+        {ready && displayPolicies.length === 0 && (
           <EmptyFeed
             description="확인할 수 있는 새로운 정책 변화가 아직 없어요."
             kind="notice"
@@ -376,7 +454,46 @@ export function App() {
       {selectedPolicy && <PolicyDetail policy={selectedPolicy} onClose={() => setSelectedPolicy(undefined)} />}
       </>}
     </main>
+    <DemoRemote
+      activeProfile={demoProfileName}
+      isMockFeedEnabled={isMockFeedEnabled}
+      onSelect={selectDemoProfile}
+      onToggleMockFeed={() => setIsMockFeedEnabled((current) => !current)}
+    />
     </>
+  );
+}
+
+
+function DemoRemote(props: {
+  activeProfile?: DemoProfileName;
+  isMockFeedEnabled: boolean;
+  onSelect: (name: DemoProfileName) => Promise<void>;
+  onToggleMockFeed: () => void;
+}) {
+  return (
+    <aside aria-label="발표용 데모 리모컨" className="demo-remote">
+      <p>DEMO</p>
+      <strong>시연 화면</strong>
+      {(["A", "B", "C"] as DemoProfileName[]).map((name) => (
+        <button
+          aria-pressed={props.activeProfile === name && !props.isMockFeedEnabled}
+          key={name}
+          onClick={() => void props.onSelect(name)}
+          onPointerUp={(event) => event.currentTarget.blur()}
+          type="button"
+        >{demoProfileLabels[name]}</button>
+      ))}
+      <span className="demo-remote-divider" />
+      <button
+        aria-pressed={props.isMockFeedEnabled}
+        onClick={props.onToggleMockFeed}
+        onPointerUp={(event) => event.currentTarget.blur()}
+        type="button"
+      >
+        공고 4개 보기
+      </button>
+    </aside>
   );
 }
 
@@ -826,4 +943,15 @@ function formatChange(value: unknown): string {
     return `${String(value.max)}세`;
   }
   return String(value ?? "");
+}
+
+
+function toLocalProfile(profile: Record<string, { value: unknown; updated_at: string; valid_until?: string; sensitivity: string }>): LocalProfile {
+  return Object.fromEntries(Object.entries(profile).map(([key, value]) => [key, {
+    value: value.value,
+    updatedAt: value.updated_at,
+    validUntil: value.valid_until,
+    source: "user_input",
+    sensitivity: value.sensitivity as LocalProfile[string]["sensitivity"],
+  }]));
 }

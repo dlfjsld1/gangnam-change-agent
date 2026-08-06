@@ -1,7 +1,7 @@
 import type { PolicyPackage } from "./policyPackage";
 
 
-export type PolicySource = "api" | "unavailable";
+export type PolicySource = "api" | "fixture";
 
 type PolicyResponse = {
   ok: boolean;
@@ -12,6 +12,7 @@ type PolicyRequest = () => Promise<PolicyResponse>;
 
 export async function loadApprovedPolicyPackages(
   request: PolicyRequest,
+  fixturePolicies: PolicyPackage[],
 ): Promise<{ policies: PolicyPackage[]; source: PolicySource }> {
   try {
     const response = await request();
@@ -29,7 +30,7 @@ export async function loadApprovedPolicyPackages(
       source: "api",
     };
   } catch {
-    return { policies: [], source: "unavailable" };
+    return { policies: fixturePolicies, source: "fixture" };
   }
 }
 

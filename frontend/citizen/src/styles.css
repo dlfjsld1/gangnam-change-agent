@@ -910,6 +910,57 @@ input:focus-visible {
   box-shadow: 0 -8px 22px rgba(18, 43, 91, 0.06);
 }
 
+.demo-remote {
+  position: fixed;
+  z-index: 4;
+  top: 32px;
+  left: calc(50% + 270px);
+  display: grid;
+  width: 146px;
+  padding: 16px;
+  color: #263552;
+  background: #fff;
+  border: 1px solid #dfe7f3;
+  border-radius: 18px;
+  box-shadow: 0 12px 30px rgba(18, 43, 91, 0.12);
+}
+
+.demo-remote p {
+  margin: 0 0 4px;
+  color: #2168e8;
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+}
+
+.demo-remote strong {
+  margin-bottom: 12px;
+  font-size: 0.85rem;
+}
+
+.demo-remote button {
+  min-height: 42px;
+  margin-top: 6px;
+  color: #53617a;
+  font-size: 0.82rem;
+  font-weight: 800;
+  background: #f5f8fd;
+  border: 1px solid #dbe4f3;
+  border-radius: 11px;
+}
+
+.demo-remote button[aria-pressed="true"] {
+  color: #fff;
+  background: #2168e8;
+  border-color: #2168e8;
+}
+
+.demo-remote-divider {
+  height: 1px;
+  margin: 8px 0 2px;
+  background: #e4eaf4;
+}
+
 .bottom-nav button {
   display: flex;
   flex: 1;
@@ -1107,6 +1158,21 @@ input:focus-visible {
 .source-link-arrow {
   font-size: 1.7rem;
   line-height: 1;
+}
+
+@media (max-width: 780px) {
+  .demo-remote {
+    top: auto;
+    right: 12px;
+    bottom: 96px;
+    left: auto;
+    width: 104px;
+    padding: 12px;
+  }
+
+  .demo-remote strong {
+    font-size: 0.76rem;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

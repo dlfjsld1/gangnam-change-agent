@@ -60,6 +60,18 @@
 
 ## Change history
 
+### 2026-08-06 발표용 목업 복원 브랜치
+
+#### Summary
+
+`demo/citizen-presentation` 브랜치에서 발표용 리모컨과 `새로운 혜택`, `새로운 정책`, `교통상황`, `공고 4개 보기` 시나리오를 복원했다. 이 브랜치는 실제 API 전용 시민 PWA와 별도 worktree에서 관리하며, API 우선 조회와 fixture fallback을 유지한다.
+
+#### Tests
+
+- `npm.cmd test`: 8 passed
+- `npm.cmd run build`: passed
+- 브라우저 확인: 리모컨 표시, 혜택 공고 1건 표시, 4개 MOCK 공고에서 첫 카드와 다음 카드 미리보기 표시
+
 ### 2026-08-05 발표용 목업 해제와 승인 공고 API 전환
 
 #### Summary

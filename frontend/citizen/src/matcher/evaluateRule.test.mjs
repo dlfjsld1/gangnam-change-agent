@@ -244,7 +244,7 @@ test("selects a STALE field before a missing field and changes it to YES after r
 });
 
 
-test("uses only approved API policies and reports an unavailable API", async () => {
+test("uses only approved API policies and falls back to the fixture on failure", async () => {
   const approvedResult = await loadApprovedPolicyPackages(
     async () => ({
       ok: true,
@@ -256,6 +256,7 @@ test("uses only approved API policies and reports an unavailable API", async () 
 
   const fallbackResult = await loadApprovedPolicyPackages(
     async () => { throw new Error("offline"); },
+    [policyPackage],
   );
-  assert.deepEqual(fallbackResult, { policies: [], source: "unavailable" });
+  assert.deepEqual(fallbackResult, { policies: [policyPackage], source: "fixture" });
 });
