@@ -1,5 +1,5 @@
 :root {
-  color: #303946;
+  color: #4d4b4b;
   font-family: "Pretendard", "Apple SD Gothic Neo", "Noto Sans KR", Arial, sans-serif;
   background: #edf2fb;
   font-synthesis: none;
@@ -26,6 +26,15 @@ input {
 
 button {
   cursor: pointer;
+  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease, transform 160ms ease;
+}
+
+button:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+button:disabled {
+  cursor: default;
 }
 
 button:focus-visible,
@@ -98,21 +107,33 @@ input:focus-visible {
 }
 
 .onboarding-privacy {
-  padding: 18px 18px 18px 54px;
-  color: #1765d7;
-  line-height: 1.55;
-  font-weight: 800;
+  display: flex;
+  align-items: flex-start;
+  gap: 13px;
+  padding: 18px;
   background: #edf4ff;
   border-radius: 18px;
-  position: relative;
 }
 
-.onboarding-privacy::before {
-  position: absolute;
-  top: 16px;
-  left: 18px;
-  content: "⌾";
-  font-size: 1.7rem;
+.onboarding-privacy > span {
+  flex: none;
+  color: #2168e8;
+  font-size: 1.45rem;
+  line-height: 1.2;
+}
+
+.onboarding-privacy h2 {
+  margin: 0;
+  color: #28579f;
+  font-size: 0.98rem;
+  line-height: 1.4;
+}
+
+.onboarding-privacy p {
+  margin: 5px 0 0;
+  color: #627494;
+  font-size: 0.84rem;
+  line-height: 1.55;
 }
 
 .onboarding-content {
@@ -124,22 +145,23 @@ input:focus-visible {
 
 .onboarding-points {
   display: grid;
-  gap: 14px;
+  gap: 12px;
   margin: 28px 0;
   padding: 0;
-  color: #53617a;
-  font-size: 0.96rem;
+  color: #596a86;
+  font-size: 0.93rem;
   line-height: 1.45;
   list-style: none;
 }
 
 .onboarding-points li {
   position: relative;
-  padding-left: 25px;
+  padding-left: 23px;
 }
 
 .onboarding-points li::before {
   position: absolute;
+  top: 0;
   left: 0;
   content: "✓";
   color: #2168e8;
@@ -147,6 +169,8 @@ input:focus-visible {
 }
 
 .onboarding-primary {
+  display: block;
+  width: 100%;
   min-height: 58px;
   margin-top: auto;
   color: #fff;
@@ -155,17 +179,17 @@ input:focus-visible {
   background: #2468df;
   border: 0;
   border-radius: 16px;
+  box-shadow: 0 8px 18px rgba(36, 104, 223, 0.18);
 }
 
-.onboarding-time {
-  margin: 13px 0 0;
-  color: #77839a;
-  text-align: center;
+.onboarding-primary:disabled {
+  opacity: 0.58;
+  box-shadow: none;
 }
 
 .onboarding-form {
   padding: 32px 28px calc(40px + env(safe-area-inset-bottom));
-  color: #303946;
+  color: #4d4b4b;
   background: #f8faff;
 }
 
@@ -244,28 +268,82 @@ input:focus-visible {
 
 .onboarding-summary-list dd {
   margin: 0;
-  color: #303946;
+  color: #4d4b4b;
   font-weight: 800;
   text-align: right;
 }
 
 .onboarding-more-info {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
   margin: 0 0 20px;
   padding: 18px;
-  background: #edf4ff;
+  text-align: left;
+  background: #2468df;
+  border: 0;
   border-radius: 18px;
+  box-shadow: 0 10px 22px rgba(36, 104, 223, 0.18);
+}
+
+.onboarding-more-info:hover {
+  background: #1d5dce;
+}
+
+.onboarding-optional-label {
+  flex: none;
+  padding: 5px 8px;
+  color: #2468df;
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1;
+  background: #ffffff;
+  border-radius: 999px;
 }
 
 .onboarding-more-info h2 {
   margin: 0;
-  font-size: 1rem;
+  color: #ffffff;
+  font-size: 1.06rem;
+  line-height: 1.35;
 }
 
 .onboarding-more-info p {
-  margin: 8px 0 0;
-  color: #53617a;
-  font-size: 0.9rem;
+  margin: 6px 0 0;
+  color: #dce9ff;
+  font-size: 0.82rem;
   line-height: 1.5;
+}
+
+.onboarding-more-info-arrow {
+  align-self: center;
+  margin-left: auto;
+  color: #ffffff;
+  font-size: 1.55rem;
+  font-weight: 400;
+}
+
+.onboarding-summary-actions,
+.onboarding-action-group {
+  margin-top: auto;
+}
+
+.onboarding-summary-actions .onboarding-primary,
+.onboarding-action-group .onboarding-primary {
+  margin-top: 0;
+}
+
+.onboarding-summary-actions .onboarding-secondary,
+.onboarding-action-group .onboarding-secondary {
+  min-height: 58px;
+  margin-top: 9px;
+  color: #53617a;
+  font-size: 1.15rem;
+  font-weight: 800;
+  background: #ffffff;
+  border: 1px solid #d6dfed;
+  border-radius: 14px;
 }
 
 .onboarding-secondary {
@@ -277,6 +355,7 @@ input:focus-visible {
   font-weight: 800;
   background: transparent;
   border: 0;
+  border-radius: 14px;
 }
 
 .interest-options {
@@ -313,7 +392,7 @@ input:focus-visible {
 .profile-page {
   min-height: 100vh;
   padding: 52px 24px calc(112px + env(safe-area-inset-bottom));
-  color: #303946;
+  color: #4d4b4b;
   background: #f8faff;
 }
 
@@ -363,7 +442,7 @@ input:focus-visible {
 }
 
 .profile-value strong {
-  color: #303946;
+  color: #4d4b4b;
   text-align: right;
 }
 
@@ -392,7 +471,7 @@ input:focus-visible {
   width: 100%;
   min-height: 68px;
   padding: 13px 16px;
-  color: #303946;
+  color: #4d4b4b;
   text-align: left;
   background: #fff;
   border: 0;
@@ -409,7 +488,7 @@ input:focus-visible {
 }
 
 .profile-management-row strong {
-  color: #303946;
+  color: #4d4b4b;
   font-size: 0.93rem;
   letter-spacing: -0.03em;
 }
@@ -512,20 +591,6 @@ input:focus-visible {
   color: #d4e1fc;
   font-size: 1rem;
   letter-spacing: -0.04em;
-}
-
-.header-icon {
-  display: grid;
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  color: inherit;
-  place-items: center;
-}
-
-.bell-icon {
-  width: 19px;
-  height: 19px;
 }
 
 .feed-panel {
@@ -765,6 +830,41 @@ input:focus-visible {
   border: 1px solid #cbd5e5;
 }
 
+.bus-stop-suggestions {
+  display: grid;
+  gap: 5px;
+  width: min(100%, 280px);
+  margin-top: 10px;
+  padding: 10px;
+  background: #ffffff;
+  border: 1px solid #d9e4f5;
+  border-radius: 12px;
+}
+
+.bus-stop-suggestions p {
+  margin: 0 0 2px;
+  color: #71809a;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.bus-stop-suggestion {
+  min-height: 36px;
+  padding: 0 10px;
+  color: #4d4b4b;
+  font-size: 0.88rem;
+  font-weight: 700;
+  text-align: left;
+  background: #f7f9fd;
+  border: 0;
+  border-radius: 8px;
+}
+
+.bus-stop-suggestion:hover {
+  color: #1559cc;
+  background: #eaf2ff;
+}
+
 .residence-question .answer-input {
   width: min(100%, 236px);
 }
@@ -840,7 +940,7 @@ input:focus-visible {
 
 .empty-feed h2 {
   margin: 18px 0 0;
-  color: #303946;
+  color: #4d4b4b;
   font-size: 1.05rem;
   letter-spacing: -0.045em;
 }

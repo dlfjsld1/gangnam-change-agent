@@ -351,7 +351,6 @@ export function App() {
       <header className="hero">
         <div className="hero-topline">
           <p>강남 Change Agent</p>
-          <span aria-hidden="true" className="header-icon"><BellIcon /></span>
         </div>
         {activeTab === "favorites" ? (
           <h1 className="count-hero-title">
@@ -495,11 +494,6 @@ function DemoRemote(props: {
       </button>
     </aside>
   );
-}
-
-
-function BellIcon() {
-  return <svg aria-hidden="true" className="line-icon bell-icon" fill="none" viewBox="0 0 24 24"><path d="M18 10a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 22h4" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" /></svg>;
 }
 
 
@@ -831,21 +825,26 @@ function Onboarding(props: OnboardingProps) {
         <div className="onboarding-hero">
           <p className="onboarding-brand">강남 Change Agent</p>
           <h1>나에게 맞는 공고를<br />찾아드릴게요</h1>
-          <p>입력한 정보는 이 기기에만 저장돼요.</p>
+          <p>강남구 공고를 내 조건에 맞춰 확인해요.</p>
         </div>
         <div className="onboarding-content">
-          <div className="onboarding-privacy">중앙 서버에 개인 프로필을 모으지 않아 대규모 유출 위험을 줄입니다.</div>
+          <section className="onboarding-privacy">
+            <span aria-hidden="true">⌾</span>
+            <div>
+              <h2>내 정보는 이 기기에만 저장돼요</h2>
+              <p>서버로 보내지 않고 공고 조건을 비교할 때만 사용해요.</p>
+            </div>
+          </section>
           <ul className="onboarding-points">
-            <li>공고 조건은 이 기기 안에서만 비교해요.</li>
-            <li>필요한 정보만 물어봐요.</li>
-            <li>언제든 내 정보에서 수정할 수 있어요.</li>
+            <li>필요한 정보만 차례대로 물어봐요.</li>
+            <li>내 정보에서 언제든 수정하거나 삭제할 수 있어요.</li>
+            <li>관심 분야를 추가하면 공고를 더 쉽게 찾아볼 수 있어요.</li>
           </ul>
           <button
             className="onboarding-primary"
             onClick={props.mode === "preview" ? props.onClose : () => setStarted(true)}
             type="button"
           >{props.mode === "preview" ? "소개 닫기" : "시작하기"}</button>
-          {props.mode !== "preview" && <p className="onboarding-time">1분이면 끝나요</p>}
         </div>
       </section>
     );
@@ -865,12 +864,17 @@ function Onboarding(props: OnboardingProps) {
             </div>
           ))}
         </dl>
-        <section className="onboarding-more-info">
-          <h2>관심 분야도 알려주실래요?</h2>
-          <p>공고가 많아지면 관심 있는 분야를 먼저 살펴볼 수 있어요.</p>
-        </section>
-        <button className="onboarding-primary" onClick={() => setStep("interests")} type="button">더 입력하기</button>
-        <button className="onboarding-secondary" disabled={isSaving} onClick={() => void complete(draft)} type="button">바로 둘러보기</button>
+        <button className="onboarding-more-info" onClick={() => setStep("interests")} type="button">
+          <span className="onboarding-optional-label">선택</span>
+          <div>
+            <h2>관심 분야를 추가할까요?</h2>
+            <p>관심 있는 공고를 더 쉽게 찾아볼 수 있어요.</p>
+          </div>
+          <span aria-hidden="true" className="onboarding-more-info-arrow">›</span>
+        </button>
+        <div className="onboarding-summary-actions">
+          <button className="onboarding-secondary" disabled={isSaving} onClick={() => void complete(draft)} type="button">지금 공고 보러가기</button>
+        </div>
       </section>
     );
   }
@@ -904,7 +908,7 @@ function Onboarding(props: OnboardingProps) {
       </div>
       <h1>{props.mode === "edit" ? "필요한 정보를 다시 확인해요" : "공고 확인에 필요한 정보예요"}</h1>
       <p className="onboarding-description">답변은 이 기기 안에만 저장되고, 언제든 수정할 수 있어요.</p>
-      {field && <DynamicQuestion field={field} onAnswer={answer} pending={isSaving} reason="unknown" />}
+      {field && <DynamicQuestion field={field} key={field.key} onAnswer={answer} pending={isSaving} reason="unknown" />}
     </section>
   );
 }
