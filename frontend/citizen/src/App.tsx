@@ -864,7 +864,7 @@ function Onboarding(props: OnboardingProps) {
       </div>
       <h1>{props.mode === "edit" ? "필요한 정보를 다시 확인해요" : "공고 확인에 필요한 정보예요"}</h1>
       <p className="onboarding-description">답변은 이 기기 안에만 저장되고, 언제든 수정할 수 있어요.</p>
-      {field && <DynamicQuestion field={field} onAnswer={answer} pending={isSaving} reason="unknown" />}
+      {field && <DynamicQuestion field={field} key={field.key} onAnswer={answer} pending={isSaving} reason="unknown" />}
     </section>
   );
 }
