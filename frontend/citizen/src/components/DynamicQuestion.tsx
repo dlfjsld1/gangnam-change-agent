@@ -3,18 +3,18 @@ import { type FormEvent, useState } from "react";
 import type { FieldDefinition } from "../profile/dynamicProfile";
 
 const BUS_STOP_SUGGESTIONS = [
-  "강남역",
-  "강남역12번출구",
-  "역삼역",
-  "선릉역",
-  "삼성역",
-  "코엑스",
-  "봉은사역",
-  "대치역",
-  "도곡역",
-  "수서역",
-  "청담역",
-  "압구정역",
+  "강남역.강남역사거리",
+  "역삼역.포스코P&S타워",
+  "포스코빌딩",
+  "한국무역센터.삼성역",
+  "코엑스아티움",
+  "봉은사.삼성1파출소",
+  "강남구청역",
+  "강남을지병원",
+  "차병원사거리",
+  "신사역.푸른저축은행",
+  "논현역",
+  "학동역",
 ];
 
 interface DynamicQuestionProps {
@@ -28,7 +28,8 @@ interface DynamicQuestionProps {
 export function DynamicQuestion(props: DynamicQuestionProps) {
   const [input, setInput] = useState("");
   const [residenceError, setResidenceError] = useState("");
-  const busStopSuggestions = props.field.key === "frequent_bus_stops" && input.trim()
+  const [isBusStopSuggestionOpen, setIsBusStopSuggestionOpen] = useState(false);
+  const busStopSuggestions = props.field.key === "frequent_bus_stops" && isBusStopSuggestionOpen && input.trim()
     ? BUS_STOP_SUGGESTIONS.filter((stop) => stop.replace(/\s/g, "").includes(input.replace(/\s/g, ""))).slice(0, 5)
     : [];
 
@@ -138,9 +139,14 @@ export function DynamicQuestion(props: DynamicQuestionProps) {
         }}
       >
         <input
-          onChange={(event) => setInput(event.target.value)}
+          onChange={(event) => {
+            setInput(event.target.value);
+            if (props.field.key === "frequent_bus_stops") {
+              setIsBusStopSuggestionOpen(true);
+            }
+          }}
           className="answer-input"
-          placeholder={props.field.data_type === "list" ? "예: 강남역, 역삼역" : undefined}
+          placeholder={props.field.data_type === "list" ? "예: 강남역.강남역사거리" : undefined}
           required
           type={props.field.data_type === "number" ? "number" : "text"}
           value={input}
@@ -149,7 +155,10 @@ export function DynamicQuestion(props: DynamicQuestionProps) {
           <div className="bus-stop-suggestions" role="listbox" aria-label="비슷한 정류장">
             <p>비슷한 정류장</p>
             {busStopSuggestions.map((stop) => (
-              <button className="bus-stop-suggestion" key={stop} onClick={() => setInput(stop)} role="option" type="button">
+              <button className="bus-stop-suggestion" key={stop} onClick={() => {
+                setInput(stop);
+                setIsBusStopSuggestionOpen(false);
+              }} role="option" type="button">
                 {stop}
               </button>
             ))}

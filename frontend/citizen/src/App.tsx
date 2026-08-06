@@ -784,21 +784,26 @@ function Onboarding(props: OnboardingProps) {
         <div className="onboarding-hero">
           <p className="onboarding-brand">강남 Change Agent</p>
           <h1>나에게 맞는 공고를<br />찾아드릴게요</h1>
-          <p>입력한 정보는 이 기기에만 저장돼요.</p>
+          <p>강남구 공고를 내 조건에 맞춰 확인해요.</p>
         </div>
         <div className="onboarding-content">
-          <div className="onboarding-privacy">중앙 서버에 개인 프로필을 모으지 않아 대규모 유출 위험을 줄입니다.</div>
+          <section className="onboarding-privacy">
+            <span aria-hidden="true">⌾</span>
+            <div>
+              <h2>내 정보는 이 기기에만 저장돼요</h2>
+              <p>서버로 보내지 않고 공고 조건을 비교할 때만 사용해요.</p>
+            </div>
+          </section>
           <ul className="onboarding-points">
-            <li>공고 조건은 이 기기 안에서만 비교해요.</li>
-            <li>필요한 정보만 물어봐요.</li>
-            <li>언제든 내 정보에서 수정할 수 있어요.</li>
+            <li>필요한 정보만 차례대로 물어봐요.</li>
+            <li>내 정보에서 언제든 수정하거나 삭제할 수 있어요.</li>
+            <li>관심 분야를 추가하면 공고를 더 쉽게 찾아볼 수 있어요.</li>
           </ul>
           <button
             className="onboarding-primary"
             onClick={props.mode === "preview" ? props.onClose : startOnboarding}
             type="button"
           >{props.mode === "preview" ? "소개 닫기" : "시작하기"}</button>
-          {props.mode !== "preview" && <p className="onboarding-time">1분이면 끝나요</p>}
         </div>
       </section>
     );

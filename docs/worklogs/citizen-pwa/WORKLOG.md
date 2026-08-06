@@ -60,6 +60,16 @@
 
 ## Change history
 
+### 2026-08-06 첫 실행 소개 화면 단순화
+
+#### Summary
+
+첫 실행 화면에서 개인정보 원칙을 반복하던 체크 목록과 소요 시간 문구를 제거했다. 서비스 역할은 네이비 헤더에서, 개인정보 안내는 제목·설명 위계가 있는 하나의 카드에서만 보여주도록 정리했다.
+
+#### Tests
+
+- `npm.cmd run build`: passed
+
 ### 2026-08-06 canonical profile field catalog 연결
 
 #### Summary
