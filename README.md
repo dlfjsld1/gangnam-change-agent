@@ -10,6 +10,8 @@ Gangnam Change Agent는 강남구청 공고와 첨부문서를 분석해 조건,
 - **시민 PWA**: [https://d30pysa0iyz6g5.cloudfront.net/](https://d30pysa0iyz6g5.cloudfront.net/)
 - **Backend API**: [https://d25409t9vvq1vj.cloudfront.net/](https://d25409t9vvq1vj.cloudfront.net/)
 
+세 애플리케이션은 하나의 서버에 묶지 않고 독립적으로 배포했습니다. 시민 PWA와 관리자 웹은 각각 별도의 비공개 S3 버킷에 빌드 결과를 저장하고 각자의 CloudFront로 제공합니다. FastAPI 백엔드는 Docker 이미지로 빌드해 ECS Fargate에서 실행하고 API 전용 CloudFront를 통해 공개합니다. 프런트는 이 API를 호출하며, 영속 데이터는 애플리케이션과 분리된 RDS PostgreSQL에 저장합니다.
+
 ## 왜 필요한가요?
 
 강남의 혜택, 정책, 교통과 공사 정보는 여러 게시판과 공고에 흩어져 있고 같은 사업도 조건과 기간이 계속 바뀝니다. 공고를 한곳에 모아 보여주더라도 시민은 각 내용을 읽고 자신과 관계있는지 직접 판단해야 합니다.
@@ -44,7 +46,7 @@ Gangnam Change Agent는 공고에서 판정에 필요한 조건을 동적으로 
 | Agent Backend | 공식 공고 수집, 다중 형식 분석, OCR, 이전 공고 diff, PolicyPackage·AgentRun, 검토·공개 API와 기본 프로필 catalog 구현 |
 | 시민 PWA | IndexedDB 프로필, 결정론적 matcher, UNKNOWN/STALE 추가 질문과 승인 정책 API adapter 구현. CloudFront 배포 완료. 기본 프로필 catalog API 연동은 다음 작업 |
 | 관리자 웹 | 검토 UI, 실행 로그, 수동 새 공고 확인, 질문·enum 선택지 수정 승인 구현. CloudFront 배포 완료 |
-| AWS | CloudFront, 비공개 S3, ALB, private ECS Fargate, RDS PostgreSQL, ECR, Secrets Manager와 NAT Gateway로 구성. 프론트엔드와 백엔드 배포 확인 |
+| AWS | 시민 PWA·관리자 웹은 각각 별도 비공개 S3와 CloudFront, 백엔드는 Docker·ECR·private ECS Fargate와 API CloudFront, DB는 별도 private RDS PostgreSQL로 분리 배포 |
 
 백엔드는 87개 테스트를 통과했습니다. 시민 PWA는 9개 matcher 테스트와 production build, 관리자 웹은 production build를 통과한 상태를 기준으로 작성했습니다.
 
@@ -71,7 +73,7 @@ flowchart LR
     S3 -->|"CloudFront 공개 URL"| PWA
 ```
 
-관리자 웹과 시민 PWA는 CloudFront에 배포했고 백엔드 API도 AWS에서 실행합니다. S3 버킷 자체는 공개하지 않으며, 승인된 근거 첨부만 `public-attachments/`에 저장하고 `PUBLIC_ATTACHMENT_BASE_URL`의 첨부 CloudFront 주소로 공개 URL을 만듭니다. 시민 프로필과 개인별 판정 결과는 중앙 서버로 전송하지 않습니다.
+관리자 웹, 시민 PWA, 백엔드 API와 데이터베이스는 서로 다른 배포 단위입니다. 사용자는 각 프런트의 CloudFront 주소로 접속하고, 브라우저에서 API 전용 CloudFront를 호출합니다. S3 버킷 자체는 공개하지 않으며, 승인된 근거 첨부만 `public-attachments/`에 저장하고 `PUBLIC_ATTACHMENT_BASE_URL`의 첨부 CloudFront 주소로 공개 URL을 만듭니다. 시민 프로필과 개인별 판정 결과는 중앙 서버로 전송하지 않습니다.
 
 ### AWS 배포 구성
 
@@ -80,25 +82,39 @@ flowchart LR
 
 ```mermaid
 flowchart TB
-    ADMIN["관리자 브라우저"] --> ADMIN_CF["관리자 CloudFront"]
-    CITIZEN["시민 PWA"] --> PWA_CF["시민 CloudFront"]
-    ADMIN_CF -->|"OAC"| ADMIN_S3["비공개 S3<br/>관리자 정적 파일"]
-    PWA_CF -->|"OAC"| PWA_S3["비공개 S3<br/>시민 PWA 정적 파일"]
+    ADMIN_USER["관리자 브라우저"] --> ADMIN_CF
+    CITIZEN_USER["시민 브라우저 · 설치형 PWA"] --> CITIZEN_CF
 
-    ADMIN --> API_CF["API CloudFront HTTPS"]
-    CITIZEN --> API_CF
-    API_CF --> ALB["Public ALB"]
-    ALB --> ECS["Private ECS Fargate<br/>FastAPI 컨테이너"]
+    subgraph ADMIN_FRONTEND["관리자 프런트 배포"]
+        ADMIN_CF["관리자 CloudFront"] -->|"OAC"| ADMIN_S3["관리자 전용 비공개 S3<br/>React 정적 파일"]
+    end
+
+    subgraph CITIZEN_FRONTEND["시민 PWA 배포"]
+        CITIZEN_CF["시민 CloudFront"] -->|"OAC"| CITIZEN_S3["시민 전용 비공개 S3<br/>PWA 정적 파일"]
+    end
+
+    ADMIN_USER -->|"HTTPS API 호출"| API_CF
+    CITIZEN_USER -->|"HTTPS API 호출"| API_CF
+
+    subgraph BACKEND["백엔드 API 배포"]
+        API_CF["API CloudFront"] --> ALB["Public ALB"]
+        ALB --> ECS["Private ECS Fargate<br/>FastAPI Docker 컨테이너"]
+    end
 
     ECR["ECR<br/>컨테이너 이미지"] -.-> ECS
     SECRETS["AWS Secrets Manager<br/>DATABASE_URL · OPENAI_API_KEY"] --> ECS
-    ECS --> RDS["Private RDS PostgreSQL"]
+
+    subgraph DATABASE["데이터베이스 배포"]
+        RDS["Private RDS PostgreSQL"]
+    end
+
+    ECS --> RDS
     ECS --> ATTACHMENTS["비공개 첨부 S3"]
     ATTACHMENTS --> PUBLIC_FILES["public-attachments/<br/>승인 후 CloudFront URL"]
     ATTACHMENTS --> REVIEW_FILES["review-attachments/<br/>관리자 presigned URL"]
     PUBLIC_FILES --> FILES_CF["첨부 CloudFront"]
-    FILES_CF --> CITIZEN
-    REVIEW_FILES -->|"15분 검토 URL"| ADMIN
+    FILES_CF --> CITIZEN_USER
+    REVIEW_FILES -->|"15분 검토 URL"| ADMIN_USER
 
     ECS --> NAT["NAT Gateway"]
     NAT --> EXTERNAL["강남구 게시판 · OpenAI API"]
