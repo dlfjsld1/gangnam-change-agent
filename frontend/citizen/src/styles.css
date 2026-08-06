@@ -107,21 +107,33 @@ input:focus-visible {
 }
 
 .onboarding-privacy {
-  padding: 18px 18px 18px 54px;
-  color: #1765d7;
-  line-height: 1.55;
-  font-weight: 800;
+  display: flex;
+  align-items: flex-start;
+  gap: 13px;
+  padding: 18px;
   background: #edf4ff;
   border-radius: 18px;
-  position: relative;
 }
 
-.onboarding-privacy::before {
-  position: absolute;
-  top: 16px;
-  left: 18px;
-  content: "⌾";
-  font-size: 1.7rem;
+.onboarding-privacy > span {
+  flex: none;
+  color: #2168e8;
+  font-size: 1.45rem;
+  line-height: 1.2;
+}
+
+.onboarding-privacy h2 {
+  margin: 0;
+  color: #28579f;
+  font-size: 0.98rem;
+  line-height: 1.4;
+}
+
+.onboarding-privacy p {
+  margin: 5px 0 0;
+  color: #627494;
+  font-size: 0.84rem;
+  line-height: 1.55;
 }
 
 .onboarding-content {
@@ -133,22 +145,23 @@ input:focus-visible {
 
 .onboarding-points {
   display: grid;
-  gap: 14px;
+  gap: 12px;
   margin: 28px 0;
   padding: 0;
-  color: #53617a;
-  font-size: 0.96rem;
+  color: #596a86;
+  font-size: 0.93rem;
   line-height: 1.45;
   list-style: none;
 }
 
 .onboarding-points li {
   position: relative;
-  padding-left: 25px;
+  padding-left: 23px;
 }
 
 .onboarding-points li::before {
   position: absolute;
+  top: 0;
   left: 0;
   content: "✓";
   color: #2168e8;
@@ -172,12 +185,6 @@ input:focus-visible {
 .onboarding-primary:disabled {
   opacity: 0.58;
   box-shadow: none;
-}
-
-.onboarding-time {
-  margin: 13px 0 0;
-  color: #77839a;
-  text-align: center;
 }
 
 .onboarding-form {
@@ -821,6 +828,41 @@ input:focus-visible {
   color: #15203a;
   background: #fff;
   border: 1px solid #cbd5e5;
+}
+
+.bus-stop-suggestions {
+  display: grid;
+  gap: 5px;
+  width: min(100%, 280px);
+  margin-top: 10px;
+  padding: 10px;
+  background: #ffffff;
+  border: 1px solid #d9e4f5;
+  border-radius: 12px;
+}
+
+.bus-stop-suggestions p {
+  margin: 0 0 2px;
+  color: #71809a;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.bus-stop-suggestion {
+  min-height: 36px;
+  padding: 0 10px;
+  color: #4d4b4b;
+  font-size: 0.88rem;
+  font-weight: 700;
+  text-align: left;
+  background: #f7f9fd;
+  border: 0;
+  border-radius: 8px;
+}
+
+.bus-stop-suggestion:hover {
+  color: #1559cc;
+  background: #eaf2ff;
 }
 
 .residence-question .answer-input {

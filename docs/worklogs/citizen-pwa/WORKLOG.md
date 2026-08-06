@@ -67,6 +67,16 @@
 
 ## Change history
 
+### 2026-08-06 첫 실행 소개 화면 단순화
+
+#### Summary
+
+첫 실행 화면에서 개인정보 원칙을 반복하던 체크 목록과 소요 시간 문구를 제거했다. 서비스 역할은 네이비 헤더에서, 개인정보 안내는 제목·설명 위계가 있는 하나의 카드에서만 보여주도록 정리했다.
+
+#### Tests
+
+- `npm.cmd run build`: passed
+
 ### 2026-08-06 canonical profile field catalog 연결
 
 #### Summary
@@ -78,6 +88,17 @@
 - `npm.cmd test`: 10 passed
 - `npm.cmd run build`: passed
 - 로컬 API: `GET /health` 200, `GET /api/profile-fields` 5개 canonical field 반환 확인
+
+### 2026-08-06 온보딩 입력 상태와 정류장 선택 보정
+
+#### Summary
+
+온보딩 질문이 바뀌어도 이전 숫자 입력값이 다음 질문 입력칸에 남지 않도록 field key 단위로 질문 컴포넌트를 새로 시작하게 했다. 자주 이용하는 정류장 입력에는 입력어와 비슷한 강남권 대표 정류장 이름을 최대 다섯 개까지 보여주는 로컬 선택 목록을 추가했다. 실제 교통 정류장 검색 API는 아직 연결되지 않았으므로, 현재 목록은 시연용 보조 입력이다.
+
+#### Tests
+
+- `npm.cmd test`: 10 passed
+- `npm.cmd run build`: passed
 
 ### 2026-08-06 인트로 정보 요약 화면 가독성 정리
 
