@@ -68,6 +68,10 @@ data "aws_iam_policy_document" "ecs_public_attachments" {
     actions   = ["s3:PutObject"]
     resources = ["${aws_s3_bucket.public_attachments.arn}/public-attachments/*"]
   }
+  statement {
+    actions   = ["s3:GetObject", "s3:PutObject"]
+    resources = ["${aws_s3_bucket.public_attachments.arn}/review-attachments/*"]
+  }
 }
 
 resource "aws_iam_role_policy" "ecs_public_attachments" {

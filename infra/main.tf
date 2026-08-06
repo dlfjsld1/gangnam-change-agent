@@ -309,6 +309,14 @@ resource "aws_ecs_task_definition" "backend" {
           value = "public-attachments"
         },
         {
+          name  = "S3_REVIEW_ATTACHMENT_PREFIX"
+          value = "review-attachments"
+        },
+        {
+          name  = "S3_REVIEW_URL_EXPIRES_IN"
+          value = "900"
+        },
+        {
           name  = "PUBLIC_ATTACHMENT_BASE_URL"
           value = "https://${aws_cloudfront_distribution.public_attachments.domain_name}"
         }

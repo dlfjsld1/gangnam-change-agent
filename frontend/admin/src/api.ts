@@ -28,7 +28,7 @@ export async function loadAdminData(): Promise<{
 }> {
   try {
     const [reviews, runs, policies] = await Promise.all([
-      request<FieldDefinitionReview[]>("/api/field-definition-reviews"),
+      request<FieldDefinitionReview[]>("/api/field-definition-reviews?status=pending"),
       request<AgentRun[]>("/api/agent-runs"),
       request<PolicyPackage[]>("/api/admin/policy-packages"),
     ]);

@@ -66,6 +66,7 @@ export interface SourceNotice {
     url: string;
     file_type: string;
     storage_key: string | null;
+    review_url?: string | null;
     public_url: string | null;
     sha256: string | null;
   }>;

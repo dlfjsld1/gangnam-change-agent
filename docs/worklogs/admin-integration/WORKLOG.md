@@ -49,6 +49,109 @@
 
 ## Change history
 
+### 2026-08-06 — 필드 검토 원본 공고·첨부 연결
+
+#### Summary
+
+필드 검토 항목을 선택하면 연결된 Agent 실행의 원본 공고와 첨부를 조회해 검토 패널 안에서 바로 열 수 있게 했다. 첨부 링크는 `review_url ?? public_url ?? url` 순서로 사용한다. 연결된 실행과 정책 ID를 따라 실제 정책명을 표시하고, 검토 탭을 `1. 필드 검토 → 2. 정책 승인·공개` 단계형 헤더로 바꿔 다음 흐름을 안내한다. Hero 문구, 중복 요약 카드 4개와 API URL 표시를 제거하고 `새 공고 확인`을 단계 헤더 오른쪽에 배치했다. 중복 상단 링크를 제거하고 실제 작업·오류 메시지를 최상단 상태 줄에 표시한다. 실행 상세의 내부 run ID는 숨기고 펼침 상태 화살표로 교체했다.
+
+#### Changed files
+
+- `frontend/admin/src/App.tsx`
+- `frontend/admin/src/styles.css`
+
+#### Tests
+
+- `frontend/admin`: `npm.cmd run build` — passed
+
+### 2026-08-06 — 정책 검토 S3 원본 첨부 연결
+
+#### Summary
+
+정책 카드에서 연결된 Agent 실행 상세를 조회하고 `review_url ?? public_url ?? url` 순서로 첨부를 열 수 있게 했다. 검토용 S3 링크는 비공개 15분 URL임을 표시하고, ECS에는 `review-attachments/*` 읽기·쓰기 권한과 prefix 설정을 추가했다.
+
+#### Changed files
+
+- `frontend/admin/src/App.tsx`
+- `frontend/admin/src/types.ts`
+- `frontend/admin/src/styles.css`
+- `infra/attachments.tf`
+- `infra/main.tf`
+
+#### Contract impact
+
+`docs/DECISIONS.md` D-009와 첨부·API 계약에 승인 전 검토 URL을 추가했다.
+
+#### Tests
+
+- `frontend/admin`: `npm.cmd run build` passed
+- `infra`: `terraform fmt -recursive` passed
+- `infra`: `terraform validate` passed
+
+#### Remaining work
+
+- Terraform apply, backend image 배포, Admin 정적 배포
+- 배포 환경에서 수집 → S3 review prefix → Admin 링크 열기 smoke 확인
+
+### 2026-08-05 — 관리자 검토 단계 탭 통합
+
+#### Summary
+
+필드 검토와 정책 최종 승인·공개를 하나의 작업영역 탭으로 통합하고, 실행 기록과 원본 공고를 필드 탭의 접이식 상세로 이동했다. 마지막 필드 처리 후 정책 탭으로 자동 전환하며 각 단계의 승인 버튼 문구를 구분했다.
+
+#### Changed files
+
+- `frontend/admin/src/App.tsx`
+- `frontend/admin/src/styles.css`
+
+#### Tests
+
+- `frontend/admin`: `npm.cmd run build` passed
+
+### 2026-08-05 — 필드 수정 승인 API 연결 복구
+
+#### Summary
+
+현재 백엔드가 수정된 `approved_field`를 `/approve`에서 처리하는 구현에 맞춰 `수정 후 승인` 요청 경로를 복구했다.
+
+#### Tests
+
+- `frontend/admin`: `npm.cmd run build` passed
+
+### 2026-08-05 — 완료된 필드 검토 큐 제거
+
+#### Summary
+
+필드 검토 목록을 pending 상태로만 조회하고 승인·수정 승인·반려 성공 시 완료 항목을 즉시 제거한 뒤 다음 대기 항목을 선택하도록 수정했다.
+
+#### Tests
+
+- `frontend/admin`: `npm.cmd run build` passed
+
+### 2026-08-05 — 관리자 검토 화면 재구성
+
+#### Summary
+
+관리자 업무 순서에 맞춰 현황, 필드 검토, 실행 추적, 정책 공개 화면을 재구성하고 반응형 레이아웃과 GSAP 진입 모션을 적용했다. `수정 후 승인` 요청이 계약의 `/edit` 경로를 호출하도록 API 연결 오류를 수정했다.
+
+#### Changed files
+
+- `frontend/admin/src/App.tsx`
+- `frontend/admin/src/styles.css`
+- `frontend/admin/src/api.ts`
+- `frontend/admin/package.json`
+- `frontend/admin/package-lock.json`
+
+#### Contract impact
+
+없음. 기존 관리자 API 계약을 그대로 사용한다.
+
+#### Tests
+
+- `frontend/admin`: `npm.cmd run build` passed
+- `git diff --check`: passed
+- 브라우저 시각 검증: 실행 환경에 연결 가능한 브라우저가 없어 미실행
+
 ### 2026-08-05 — Backend 관리자 API 연결
 
 #### Summary
