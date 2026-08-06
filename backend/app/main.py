@@ -1,6 +1,6 @@
-from contextlib import asynccontextmanager
 import json
 import os
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Annotated, Literal
 
@@ -18,24 +18,26 @@ from app.repositories.agent_repository import (
 from app.schemas.agent_api import AgentRunRequest, AgentRunResponse
 from app.schemas.discovery_api import NoticeDiscoveryRequest, NoticeDiscoveryResponse
 from app.schemas.review_api import ApproveFieldReviewRequest, RejectReviewRequest
+from app.schemas.source_notice import SourceNotice
 from app.services.agent_execution import AgentExecutionService, PreviousPolicyNotFound
 from app.services.attachment_archive import (
     AttachmentArchiveUnavailable,
     AttachmentPrivacyRejected,
     configured_public_attachment_archive,
+    configured_review_attachment_store,
 )
-from app.services.policy_publish import PolicyPublishService
 from app.services.notice_discovery import (
     NoticeDiscoveryService,
     NoticeDiscoveryUnavailable,
 )
-
+from app.services.policy_publish import PolicyPublishService
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 APPROVED_POLICY_PATH = PROJECT_ROOT / "demo-data" / "approved-policy.json"
 database = Database()
 agent_repository = AgentRepository(database.session_factory)
 public_attachment_archive = configured_public_attachment_archive()
+review_attachment_store = configured_review_attachment_store()
 
 
 @asynccontextmanager
@@ -83,7 +85,10 @@ def get_agent_repository() -> AgentRepository:
 def get_agent_execution_service(
     repository: Annotated[AgentRepository, Depends(get_agent_repository)],
 ) -> AgentExecutionService:
-    return AgentExecutionService(repository)
+    return AgentExecutionService(
+        repository,
+        review_attachment_store=review_attachment_store,
+    )
 
 
 def get_policy_publish_service(
@@ -179,6 +184,12 @@ def get_admin_agent_run_detail(
     detail = repository.get_agent_run_detail(run_id)
     if detail is None:
         raise HTTPException(status_code=404, detail="Agent run not found.")
+    source_notice = detail.get("source_notice")
+    if isinstance(source_notice, dict):
+        notice = SourceNotice.model_validate(source_notice)
+        detail["source_notice"] = review_attachment_store.add_review_urls(
+            notice
+        ).model_dump(mode="json")
     return detail
 
 

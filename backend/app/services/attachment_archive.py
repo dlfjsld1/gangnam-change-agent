@@ -1,9 +1,9 @@
-from copy import deepcopy
-from hashlib import sha256
 import mimetypes
 import os
-from pathlib import PurePath
 import re
+from copy import deepcopy
+from hashlib import sha256
+from pathlib import PurePath
 from typing import Any, Protocol
 from urllib.parse import quote
 
@@ -12,7 +12,6 @@ from app.tools.document_extractor import (
     AttachmentDownloader,
     ScraplingAttachmentDownloader,
 )
-
 
 SENSITIVE_FILENAME_TERMS = (
     "개인정보",
@@ -29,6 +28,87 @@ class PublicAttachmentArchive(Protocol):
         notice: SourceNotice,
         policy_package: dict[str, Any],
     ) -> tuple[SourceNotice, dict[str, Any]]: ...
+
+
+class ReviewAttachmentStore(Protocol):
+    def archive_notice(self, notice: SourceNotice) -> SourceNotice: ...
+
+    def add_review_urls(self, notice: SourceNotice) -> SourceNotice: ...
+
+
+class DisabledReviewAttachmentStore:
+    def archive_notice(self, notice: SourceNotice) -> SourceNotice:
+        return notice
+
+    def add_review_urls(self, notice: SourceNotice) -> SourceNotice:
+        return notice
+
+
+class S3ReviewAttachmentStore:
+    def __init__(
+        self,
+        *,
+        bucket: str,
+        prefix: str,
+        client: Any,
+        downloader: AttachmentDownloader | None = None,
+        url_expires_in: int = 900,
+    ) -> None:
+        self._bucket = bucket
+        self._prefix = prefix.strip("/")
+        self._client = client
+        self._downloader = downloader or ScraplingAttachmentDownloader()
+        self._url_expires_in = url_expires_in
+
+    def archive_notice(self, notice: SourceNotice) -> SourceNotice:
+        attachments: list[SourceAttachment] = []
+        for attachment in notice.attachments:
+            if attachment.storage_key and attachment.sha256:
+                attachments.append(attachment)
+                continue
+            try:
+                content = self._downloader.fetch_bytes(attachment.url)
+                digest = sha256(content).hexdigest()
+                key = _object_key(self._prefix, notice, attachment.filename, digest)
+                self._client.put_object(
+                    Bucket=self._bucket,
+                    Key=key,
+                    Body=content,
+                    ContentType=(
+                        mimetypes.guess_type(attachment.filename)[0]
+                        or "application/octet-stream"
+                    ),
+                    CacheControl="private, no-store",
+                    ServerSideEncryption="AES256",
+                )
+            except Exception as error:
+                raise AttachmentArchiveUnavailable(
+                    f"Review attachment archive failed: {attachment.filename}"
+                ) from error
+            attachments.append(
+                attachment.model_copy(
+                    update={"storage_key": key, "sha256": digest}
+                )
+            )
+        return notice.model_copy(update={"attachments": attachments})
+
+    def add_review_urls(self, notice: SourceNotice) -> SourceNotice:
+        attachments = []
+        for attachment in notice.attachments:
+            review_url = None
+            if attachment.storage_key and attachment.storage_key.startswith(
+                f"{self._prefix}/"
+            ):
+                review_url = self._client.generate_presigned_url(
+                    "get_object",
+                    Params={
+                        "Bucket": self._bucket,
+                        "Key": attachment.storage_key,
+                    },
+                    ExpiresIn=self._url_expires_in,
+                )
+            attachments.append(attachment.model_copy(update={"review_url": review_url}))
+        return notice.model_copy(update={"attachments": attachments})
 
 
 class DisabledPublicAttachmentArchive:
@@ -136,6 +216,21 @@ def configured_public_attachment_archive() -> PublicAttachmentArchive:
         public_base_url=base_url,
         prefix=os.getenv("S3_ATTACHMENT_PREFIX", "public-attachments"),
         client=boto3.client("s3", region_name=region),
+    )
+
+
+def configured_review_attachment_store() -> ReviewAttachmentStore:
+    bucket = os.getenv("S3_ATTACHMENT_BUCKET")
+    if not bucket:
+        return DisabledReviewAttachmentStore()
+    region = os.getenv("S3_ATTACHMENT_REGION", "ap-northeast-2")
+    import boto3
+
+    return S3ReviewAttachmentStore(
+        bucket=bucket,
+        prefix=os.getenv("S3_REVIEW_ATTACHMENT_PREFIX", "review-attachments"),
+        client=boto3.client("s3", region_name=region),
+        url_expires_in=int(os.getenv("S3_REVIEW_URL_EXPIRES_IN", "900")),
     )
 
 
