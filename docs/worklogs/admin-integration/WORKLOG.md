@@ -47,6 +47,21 @@
 
 ## Change history
 
+### 2026-08-06 — enum 수정값 승인 유실 방지
+
+#### Summary
+
+enum 질문과 선택지를 편집하고도 별도 `필드 승인` 버튼을 누르면 원본 제안만 승인되던 경로를 제거했다. 승인 버튼은 편집 여부에 따라 `수정 내용으로 승인`으로 표시하고, 모든 승인 요청에 현재 화면의 `approved_field`를 전달한다.
+
+#### Contract impact
+
+없음. 기존 FieldDefinitionReview 승인 요청의 선택적 `approved_field` 계약을 사용한다.
+
+#### Validation
+
+- 관리자 TypeScript·Vite production build: passed
+- 백엔드 수정 승인·PolicyPackage 반영 test: passed
+
 ### 2026-08-06 — enum 시민 질문·선택지 수정 승인
 
 #### Summary

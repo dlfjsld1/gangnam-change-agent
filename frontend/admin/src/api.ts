@@ -61,10 +61,10 @@ export async function discoverNewNotices(): Promise<{
 
 export async function submitReview(
   reviewId: string,
-  action: ReviewStatus | "edit",
+  action: ReviewStatus,
   field: FieldDefinition,
 ): Promise<void> {
-  const body = JSON.stringify(action === "edit" ? { approved_field: field } : {});
+  const body = JSON.stringify(action === "approved" ? { approved_field: field } : {});
   const endpointAction = action === "rejected" ? "reject" : "approve";
   await request(`/api/field-definition-reviews/${encodeURIComponent(reviewId)}/${endpointAction}`, {
     method: "POST",

@@ -80,7 +80,7 @@ export function App() {
     }
   }, [policies, selectedPolicyId]);
 
-  async function decide(action: ReviewStatus | "edit") {
+  async function decide(action: ReviewStatus) {
     if (!selected || !field) {
       return;
     }
@@ -281,7 +281,7 @@ export function App() {
                 {selected.evidence && <article className="evidence"><div><h3>원문 근거</h3><a href={selected.evidence.source_url} target="_blank" rel="noreferrer">원문 열기</a></div><p>“{selected.evidence.quote}”</p><small>{selected.evidence.document_name} · {selected.evidence.location}</small></article>}
                 {sourceNotice && <article className="evidence"><div><h3>원본 공고·첨부</h3><a href={sourceNotice.source_url} target="_blank" rel="noopener noreferrer">원본 공고 열기</a></div>{sourceNotice.attachments.length ? sourceNotice.attachments.map((attachment) => <p key={attachment.url}><a href={attachment.review_url ?? attachment.public_url ?? attachment.url} target="_blank" rel="noopener noreferrer">{attachment.filename}</a> <small>· {attachment.review_url ? "검토용 S3 · 15분" : attachment.public_url ? "공개 S3" : "공식 원본"}</small></p>) : <p>첨부 파일이 없습니다.</p>}</article>}
                 <article className="candidates"><h3>기존 canonical field 후보</h3>{selected.canonical_candidates?.length ? selected.canonical_candidates.map((candidate) => <p key={candidate.key}><code>{candidate.key}</code> · {candidate.label}</p>) : <p>유사 후보가 없습니다.</p>}</article>
-                <div className="actions"><button className="reject" onClick={() => void decide("rejected")}>반려</button><button onClick={() => void decide("edit")}>수정 후 승인</button><button className="approve" onClick={() => void decide("approved")}>필드 승인</button></div>
+                <div className="actions"><button className="reject" onClick={() => void decide("rejected")}>반려</button><button className="approve" onClick={() => void decide("approved")}>{draft ? "수정 내용으로 승인" : "필드 승인"}</button></div>
               </section>
             ) : <section className="review-panel empty">검토할 제안이 없습니다.</section>}
           </div>
