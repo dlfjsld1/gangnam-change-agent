@@ -17,6 +17,7 @@ from app.repositories.agent_repository import (
 )
 from app.schemas.agent_api import AgentRunRequest, AgentRunResponse
 from app.schemas.discovery_api import NoticeDiscoveryRequest, NoticeDiscoveryResponse
+from app.schemas.field_definition import ProfileFieldCatalogItem
 from app.schemas.review_api import ApproveFieldReviewRequest, RejectReviewRequest
 from app.schemas.source_notice import SourceNotice
 from app.services.agent_execution import AgentExecutionService, PreviousPolicyNotFound
@@ -43,6 +44,7 @@ review_attachment_store = configured_review_attachment_store()
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     database.create_schema()
+    agent_repository.ensure_default_profile_fields()
     yield
     database.engine.dispose()
 
@@ -110,6 +112,17 @@ def get_notice_discovery_service(
 @app.get("/health")
 def health_check() -> dict[str, str]:
     return {"status": "ok"}
+
+
+@app.get(
+    "/api/profile-fields",
+    response_model=list[ProfileFieldCatalogItem],
+    response_model_exclude_none=True,
+)
+def list_profile_fields(
+    repository: Annotated[AgentRepository, Depends(get_agent_repository)],
+) -> list[ProfileFieldCatalogItem]:
+    return repository.list_profile_field_catalog()
 
 
 @app.get("/api/policy-packages")

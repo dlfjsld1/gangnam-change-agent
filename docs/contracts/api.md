@@ -6,6 +6,25 @@
 
 응답은 status가 ok인 JSON 객체다.
 
+## GET /api/profile-fields
+
+시민 PWA 온보딩에서 사용하는 승인된 canonical profile field 목록을
+`display_order` 순서로 반환한다. 서버는 필드 정의만 제공하며 시민이 입력한 값은 이
+API를 포함한 어떤 요청으로도 받지 않는다.
+
+각 항목은 다음 메타 정보를 포함한다.
+
+- `field_definition`: 승인된 FieldDefinition
+- `onboarding_group`: 첫 설정의 기본 질문인 `core` 또는 선택 질문인 `optional`
+- `eligibility_usable`: Agent가 자격 조건 canonical field로 재사용할 수 있는지
+- `display_order`: PWA 표시 순서
+
+기본 catalog는 `residence`, `age`, `employment_status`,
+`frequent_bus_stops`, `interest_categories`다. `frequent_bus_stops`는 주변 영향
+확인용이고 `interest_categories`는 추천·정렬용이므로 둘 다
+`eligibility_usable=false`이며 정책의 `required_profile_fields`에 자동으로 넣지
+않는다. `interest_categories`의 시민 답변은 IndexedDB에만 저장한다.
+
 ## GET /api/policy-packages
 
 승인된 review.status = approved 정책 패키지만 배열로 반환한다.
@@ -152,6 +171,10 @@ HumanHandoff 별도 API는 만들지 않는다. 사람 검토 필요 상태는 A
 
 승인 요청은 관리자가 수정한 canonical field를 선택적으로 포함한다. 생략하면 제안된
 필드를 승인한다.
+
+`approved_field`에는 key와 label뿐 아니라 시민에게 표시할 `question`과 enum의
+`allowed_values`도 수정해 전달할 수 있다. enum 선택지는 판정용 `value`와 시민용
+`label`을 모두 포함해야 하며 빈 선택지를 승인하지 않는다.
 
 ```json
 {

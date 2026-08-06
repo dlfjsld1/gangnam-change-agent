@@ -10,7 +10,7 @@ from app.schemas.document_extraction import (
     DocumentExtraction,
     NoticeDocumentCorpus,
 )
-from app.schemas.field_definition import FieldDefinition
+from app.schemas.field_definition import FieldDefinition, FieldOption
 from app.schemas.policy_extraction import (
     PolicyActionDraft,
     PolicyConditionDraft,
@@ -117,6 +117,7 @@ def _draft(*, quote: str = "지원 대상은 강남구 거주 청년입니다.")
                 minimum=None,
                 maximum=None,
                 data_type="string",
+                allowed_values=[],
                 question="현재 거주 지역은 어디인가요?",
                 sensitivity="medium",
                 validity_days=365,
@@ -214,6 +215,56 @@ def test_openai_extractor_uses_structured_policy_draft() -> None:
     assert client.responses.request["model"] == "gpt-test-policy"
     assert client.responses.request["text_format"] is PolicyDraft
     assert "61922.html" in str(client.responses.request["input"])
+    system_prompt = str(client.responses.request["input"][0]["content"])
+    assert "질문만 읽어도" in system_prompt
+    assert "allowed_values" in system_prompt
+    assert "해당 사항 없음" in system_prompt
+    assert "UNKNOWN" in system_prompt
+
+
+def test_enum_answer_labels_are_preserved_in_policy_package() -> None:
+    condition = (
+        _draft()
+        .conditions[0]
+        .model_copy(
+            update={
+                "field": "employment_status",
+                "label": "현재 취업 상태",
+                "operator": "in",
+                "scalar_value": None,
+                "values": ["job_seeker", "unemployed"],
+                "data_type": "enum",
+                "allowed_values": [
+                    FieldOption(value="job_seeker", label="현재 구직 중이에요"),
+                    FieldOption(value="unemployed", label="현재 미취업 상태예요"),
+                    FieldOption(
+                        value="none_of_above",
+                        label="해당 사항 없음",
+                    ),
+                ],
+                "question": "공고일 기준 현재 취업 상태를 알려주세요.",
+            }
+        )
+    )
+    draft = _draft().model_copy(update={"conditions": [condition]})
+
+    result = build_policy_package(
+        "run-contextual-enum",
+        _notice(),
+        _corpus(),
+        draft,
+        FieldRegistry(),
+    )
+
+    assert result.policy_package is not None
+    field = result.policy_package["required_profile_fields"][0]
+    assert field["question"] == "공고일 기준 현재 취업 상태를 알려주세요."
+    assert field["allowed_values"] == [
+        {"value": "job_seeker", "label": "현재 구직 중이에요"},
+        {"value": "unemployed", "label": "현재 미취업 상태예요"},
+        {"value": "none_of_above", "label": "해당 사항 없음"},
+    ]
+    _validate_policy_package(result.policy_package)
 
 
 def test_verified_draft_builds_schema_valid_policy_package() -> None:

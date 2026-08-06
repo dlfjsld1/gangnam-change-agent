@@ -37,3 +37,10 @@ class FieldDefinitionReview(BaseModel):
     approved_field: FieldDefinition | None = None
     review_note: str | None = None
     reviewed_at: datetime | None = None
+
+
+class ProfileFieldCatalogItem(BaseModel):
+    field_definition: FieldDefinition
+    onboarding_group: Literal["core", "optional"]
+    eligibility_usable: bool
+    display_order: int = Field(ge=0)

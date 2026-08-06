@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gangnam-change-agent.local/contracts/profile-field-catalog-item.schema.json",
+  "title": "ProfileFieldCatalogItem",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "field_definition",
+    "onboarding_group",
+    "eligibility_usable",
+    "display_order"
+  ],
+  "properties": {
+    "field_definition": {
+      "$ref": "https://gangnam-change-agent.local/contracts/field-definition.schema.json"
+    },
+    "onboarding_group": {
+      "type": "string",
+      "enum": ["core", "optional"]
+    },
+    "eligibility_usable": {
+      "type": "boolean"
+    },
+    "display_order": {
+      "type": "integer",
+      "minimum": 0
+    }
+  }
+}

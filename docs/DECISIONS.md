@@ -106,3 +106,16 @@
 - Reason: 파싱 실패·OCR 실패·근거 불일치 정책도 관리자가 수집 당시 원본 첨부로 검증할 수 있어야 한다.
 - Affected areas: backend, frontend/admin, infra
 - Affected contracts: `docs/contracts/api.md`, `docs/contracts/PUBLIC_ATTACHMENT_FRONTEND_INTEGRATION.md`
+
+## D-010 — 기본 프로필 필드 catalog와 추천 필드 분리
+
+- Date: 2026-08-06
+- Status: accepted
+- Decision: 백엔드는 PWA 첫 온보딩에 필요한 승인 canonical field 정의를 독립 registry에 seed하고 `GET /api/profile-fields`로 공개한다. `residence`, `age`, `employment_status`, `frequent_bus_stops`는 core, `interest_categories`는 optional이다.
+- Eligibility boundary: `residence`, `age`, `employment_status`만 Agent의 자격 조건 field registry에서 재사용한다. `frequent_bus_stops`는 주변 영향 확인용, `interest_categories`는 추천·정렬용이므로 EligibilityRule이나 PolicyPackage의 `required_profile_fields`에 자동으로 넣지 않는다.
+- Interest values: `youth_jobs`, `housing_living`, `welfare_care`, `culture_sports`, `transport_facilities`, `education_family`를 승인된 선택값으로 사용한다.
+- Privacy: 서버에는 필드 정의만 저장한다. 시민이 입력한 기본정보와 관심 분야는 IndexedDB에만 저장하며 서버로 전송하지 않는다.
+- Approval: MVP 기본 seed는 팀 합의로 approved 상태이며 AgentRun이나 가짜 FieldDefinitionProposal을 생성하지 않는다. 관리자 생성·수정 UI는 후속 범위다.
+- Reason: PWA의 임시 하드코딩과 Agent canonical key의 불일치를 막으면서 추천 정보가 자격 판정에 잘못 사용되는 것을 방지하기 위함이다.
+- Affected areas: backend, frontend/citizen
+- Contract impact: additive `ProfileFieldCatalogItem` schema와 `GET /api/profile-fields` API를 추가한다. 기존 FieldDefinition과 PolicyPackage schema는 변경하지 않는다.
