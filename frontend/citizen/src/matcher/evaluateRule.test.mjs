@@ -260,3 +260,29 @@ test("uses only approved API policies and falls back to the fixture on failure",
   );
   assert.deepEqual(fallbackResult, { policies: [policyPackage], source: "fixture" });
 });
+
+
+test("fills choices for an approved enum whose API options are empty", async () => {
+  const emptyEnumPolicy = {
+    ...policyPackage,
+    eligibility_rule: { field: "residency_status", operator: "equals", value: "무단전출거주불명등록" },
+    required_profile_fields: [{
+      key: "residency_status",
+      label: "현 시점에 무단전출 거주불명등록 대상",
+      data_type: "enum",
+      allowed_values: [],
+      question: "무단전출에 따른 거주불명등록 직권조치 대상인가?",
+      sensitivity: "high",
+      review_status: "approved",
+    }],
+  };
+  const result = await loadApprovedPolicyPackages(
+    async () => ({ ok: true, json: async () => [emptyEnumPolicy] }),
+    [policyPackage],
+  );
+
+  assert.deepEqual(result.policies[0].required_profile_fields[0].allowed_values, [
+    { value: "무단전출거주불명등록", label: "무단전출거주불명등록" },
+    { value: "__not_applicable__", label: "해당하지 않음" },
+  ]);
+});

@@ -307,3 +307,14 @@ fixture 정책의 승인된 required profile field를 DynamicQuestion 입력으�
 - `npm.cmd run build`: passed
 - https://d30pysa0iyz6g5.cloudfront.net: HTTP 200
 - 시민 origin의 `/api/policy-packages` CORS header 확인: passed
+
+### 2026-08-06 — 빈 enum 선택지 보정
+
+#### Summary
+
+승인된 정책의 enum 필드가 빈 `allowed_values`로 내려와 질문 버튼이 표시되지 않는 경우, 정책 조건의 기준값과 `해당하지 않음` 선택지를 Citizen 로더에서 보정한다. 보정된 답변은 기존 로컬 프로필과 매칭 흐름을 그대로 사용한다.
+
+#### Tests
+
+- `npm.cmd test`: 9 passed
+- `npm.cmd run build`: passed
