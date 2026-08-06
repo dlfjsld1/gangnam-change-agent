@@ -84,6 +84,19 @@ export function App() {
     if (!selected || !field) {
       return;
     }
+    if (
+      action !== "rejected"
+      && field.data_type === "enum"
+      && (
+        !field.allowed_values?.length
+        || field.allowed_values.some(
+          (option) => !String(option.value).trim() || !option.label.trim(),
+        )
+      )
+    ) {
+      setMessage("enum 필드는 값과 표시 문구가 있는 선택지를 하나 이상 입력해야 합니다.");
+      return;
+    }
     if (source === "api") {
       try {
         await submitReview(selected.review_id, action, field);
@@ -257,6 +270,14 @@ export function App() {
                   <div><span>데이터 형식</span><strong>{field.data_type}</strong></div>
                   <div><span>민감도</span><strong>{field.sensitivity}</strong></div>
                 </div>
+                {field.data_type === "enum" && <section className="enum-editor">
+                  <div className="enum-editor-heading"><div><h3>시민 답변 선택지</h3><p>판정에 사용하는 값과 시민 화면에 보이는 문구를 함께 검토하세요.</p></div><button onClick={() => setDraft({ ...field, allowed_values: [...(field.allowed_values ?? []), { value: "", label: "" }] })} type="button">선택지 추가</button></div>
+                  {(field.allowed_values ?? []).map((option, index) => <div className="enum-option" key={`enum-option-${index}`}>
+                    <label>판정값<input aria-label={`선택지 ${index + 1} 판정값`} value={String(option.value)} onChange={(event) => setDraft({ ...field, allowed_values: (field.allowed_values ?? []).map((item, itemIndex) => itemIndex === index ? { ...item, value: event.target.value } : item) })} /></label>
+                    <label>시민 표시 문구<input aria-label={`선택지 ${index + 1} 표시 문구`} value={option.label} onChange={(event) => setDraft({ ...field, allowed_values: (field.allowed_values ?? []).map((item, itemIndex) => itemIndex === index ? { ...item, label: event.target.value } : item) })} /></label>
+                    <button aria-label={`선택지 ${index + 1} 삭제`} className="enum-remove" onClick={() => setDraft({ ...field, allowed_values: (field.allowed_values ?? []).filter((_, itemIndex) => itemIndex !== index) })} type="button">삭제</button>
+                  </div>)}
+                </section>}
                 {selected.evidence && <article className="evidence"><div><h3>원문 근거</h3><a href={selected.evidence.source_url} target="_blank" rel="noreferrer">원문 열기</a></div><p>“{selected.evidence.quote}”</p><small>{selected.evidence.document_name} · {selected.evidence.location}</small></article>}
                 {sourceNotice && <article className="evidence"><div><h3>원본 공고·첨부</h3><a href={sourceNotice.source_url} target="_blank" rel="noopener noreferrer">원본 공고 열기</a></div>{sourceNotice.attachments.length ? sourceNotice.attachments.map((attachment) => <p key={attachment.url}><a href={attachment.review_url ?? attachment.public_url ?? attachment.url} target="_blank" rel="noopener noreferrer">{attachment.filename}</a> <small>· {attachment.review_url ? "검토용 S3 · 15분" : attachment.public_url ? "공개 S3" : "공식 원본"}</small></p>) : <p>첨부 파일이 없습니다.</p>}</article>}
                 <article className="candidates"><h3>기존 canonical field 후보</h3>{selected.canonical_candidates?.length ? selected.canonical_candidates.map((candidate) => <p key={candidate.key}><code>{candidate.key}</code> · {candidate.label}</p>) : <p>유사 후보가 없습니다.</p>}</article>

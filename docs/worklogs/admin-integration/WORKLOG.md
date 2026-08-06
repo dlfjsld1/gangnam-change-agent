@@ -49,6 +49,22 @@
 
 ## Change history
 
+### 2026-08-06 — enum 시민 질문·선택지 수정 승인
+
+#### Summary
+
+필드 검토 화면에서 기존 시민 질문과 함께 enum의 판정값·시민 표시 문구를 추가·수정·삭제하고 `approved_field.allowed_values`로 승인할 수 있게 했다. 빈 enum 또는 값·표시 문구가 비어 있는 선택지는 승인 전에 차단한다.
+
+#### Contract impact
+
+기존 FieldDefinition과 수정 승인 API를 그대로 사용하며 새 endpoint나 schema는 추가하지 않았다.
+
+#### Validation
+
+- 관리자 TypeScript·Vite production build: passed
+- 백엔드 수정 승인·PolicyPackage 반영 test: passed
+- 백엔드 pytest: 87 passed, 6 warnings
+
 ### 2026-08-06 — 필드 검토 원본 공고·첨부 연결
 
 #### Summary

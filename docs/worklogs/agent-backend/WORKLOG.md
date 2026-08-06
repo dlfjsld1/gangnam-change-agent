@@ -3,7 +3,7 @@
 ## Current status
 
 - Current milestone: PostgreSQL 배포 통합 준비
-- Working: health API, 실제 Agent 실행·조회 API, 관리자 수동 새 공고 확인 API, 공통 계약, 공식 게시판 수집, HTML·PDF·HWPX 추출, 최후 복구용 OpenAI 이미지 OCR adapter, 동일 문서 변형 교차 검증, 구조화 정책 후보와 PolicyPackage 조립, Field Registry 해석, Human Review 결과 생성, LangGraph 실행 흐름과 AgentRun 로그 누적, SQLite/PostgreSQL 공용 저장소 계층, 관리자 실행·검토·정책 목록과 상세 조회 API, 관리자 필드 검토 API, 정책 승인·반려와 승인 정책 Publish, 승인된 공개 근거 첨부 S3 archive
+- Working: health API, 실제 Agent 실행·조회 API, 관리자 수동 새 공고 확인 API, 기본 프로필 field catalog API, 공통 계약, 공식 게시판 수집, HTML·PDF·HWPX 추출, 최후 복구용 OpenAI 이미지 OCR adapter, 동일 문서 변형 교차 검증, 문맥을 포함한 동적 질문·선택지 생성, 구조화 정책 후보와 PolicyPackage 조립, Field Registry 해석, Human Review 결과 생성, LangGraph 실행 흐름과 AgentRun 로그 누적, SQLite/PostgreSQL 공용 저장소 계층, 관리자 실행·검토·정책 목록과 상세 조회 API, 관리자 필드 검토 API, 정책 승인·반려와 승인 정책 Publish, 승인된 공개 근거 첨부 S3 archive
 - In progress: 관리자·통합 담당의 컨테이너와 PostgreSQL 연결 지원, 배포 전체 흐름 smoke 준비
 - Not implemented: PostgreSQL live integration, 관리자 API 인증·접근 제한, 새 공고 주기 실행
 - Blockers: none
@@ -81,6 +81,41 @@ Agent 실행이 수집한 공식 첨부를 파싱 결과와 무관하게 비공�
 #### Remaining work
 
 - AWS ECS task role·환경변수 적용 후 실제 첨부 업로드와 presigned URL smoke 확인
+
+### 2026-08-06 — PWA 기본 프로필 field catalog
+
+#### Summary
+
+PWA가 첫 실행에서 사용할 `residence`, `age`, `employment_status`, `frequent_bus_stops`와 선택형 `interest_categories`를 승인 canonical seed로 등록하고 공개 조회 API를 추가했다. 주변 영향·추천용 두 필드는 자격 판정 registry에서 제외하며 시민이 입력한 값은 서버가 받거나 저장하지 않는다.
+
+#### Contract impact
+
+D-010, additive `ProfileFieldCatalogItem` schema와 `GET /api/profile-fields`를 추가했다. 기존 FieldDefinition과 PolicyPackage schema는 변경하지 않았다.
+
+#### Validation
+
+- repository seed idempotency와 eligibility field 분리 test: passed
+- 공개 API에 시민 값이 포함되지 않는 경로 test: passed
+- ProfileFieldCatalogItem JSON Schema validation: passed
+- ruff check와 format check: passed
+- pytest: 86 passed, 6 warnings
+
+### 2026-08-06 — 동적 질문과 enum 답변 문맥 강화
+
+#### Summary
+
+정책 구조화 프롬프트가 질문만 읽어도 대상 지역·시점·상태·단위를 이해할 수 있게 하고, enum 답변에는 기계 판정값과 시민이 이해할 수 있는 구체적인 표시 문구를 함께 만들도록 강화했다. 추출된 `allowed_values`를 FieldDefinition과 PolicyPackage까지 보존한다. `해당 사항 없음`은 실제 부정 선택지로 저장할 수 있지만, `모름/잘 모르겠어요`는 프로필 값으로 만들지 않고 시민 PWA에서 답변 건너뛰기로 처리해 `UNKNOWN`을 유지해야 한다.
+
+#### Contract impact
+
+공유 JSON Schema는 변경하지 않았다. 기존 FieldDefinition의 `allowed_values`와 MatchStatus `UNKNOWN` 의미를 구현에서 소비한다. Citizen PWA에는 `잘 모르겠어요` 선택 시 값을 저장하지 않고 질문을 건너뛰는 UI 연결이 별도로 남아 있다.
+
+#### Validation
+
+- 정책 조립·프롬프트 unit test: 11 passed
+- OpenAI strict JSON Schema: FieldOption의 `value`·`label` 필수 및 추가 속성 금지 확인
+- ruff check: passed
+- pytest: 84 passed, 6 warnings
 
 ### 2026-08-05 — 관리자 수동 새 공고 확인 API
 

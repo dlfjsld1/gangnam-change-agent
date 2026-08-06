@@ -41,6 +41,44 @@ def test_policy_package_can_be_loaded_by_id() -> None:
     assert response.json()["policy_id"] == "demo-policy-v2"
 
 
+def test_profile_field_catalog_returns_public_definitions_without_profile_values() -> (
+    None
+):
+    class FakeProfileFieldRepository:
+        def list_profile_field_catalog(self) -> list[dict[str, object]]:
+            return [
+                {
+                    "field_definition": {
+                        "key": "interest_categories",
+                        "label": "관심 분야",
+                        "data_type": "list",
+                        "allowed_values": [
+                            {"value": "youth_jobs", "label": "청년 · 일자리"}
+                        ],
+                        "question": "관심 있는 분야를 선택해 주세요.",
+                        "sensitivity": "low",
+                        "validity_days": None,
+                        "review_status": "approved",
+                    },
+                    "onboarding_group": "optional",
+                    "eligibility_usable": False,
+                    "display_order": 50,
+                }
+            ]
+
+    app.dependency_overrides[get_agent_repository] = (
+        lambda: FakeProfileFieldRepository()
+    )
+    try:
+        response = client.get("/api/profile-fields")
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert response.json()[0]["field_definition"]["key"] == "interest_categories"
+    assert "value" not in response.json()[0]
+
+
 class FakeExecutionService:
     def __init__(self, *, missing_previous: bool = False) -> None:
         self.missing_previous = missing_previous

@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from app.db_models import (
     AgentRunRecord,
+    CanonicalFieldDefinitionRecord,
     FieldDefinitionProposalRecord,
     FieldDefinitionReviewRecord,
     PolicyPackageRecord,
@@ -17,6 +18,7 @@ from app.schemas.field_definition import (
     FieldDefinition,
     FieldDefinitionProposal,
     FieldDefinitionReview,
+    ProfileFieldCatalogItem,
 )
 from app.schemas.source_notice import SourceNotice
 
@@ -46,6 +48,42 @@ class AgentRepository:
                 session.merge(_proposal_record(agent_run.run_id, proposal))
             for review in field_reviews or []:
                 session.merge(_review_record(review))
+
+    def ensure_default_profile_fields(self) -> None:
+        from app.services.profile_field_catalog import DEFAULT_PROFILE_FIELDS
+
+        with self._session_factory.begin() as session:
+            for item in DEFAULT_PROFILE_FIELDS:
+                key = item.field_definition.key
+                if session.get(CanonicalFieldDefinitionRecord, key) is not None:
+                    continue
+                session.add(
+                    CanonicalFieldDefinitionRecord(
+                        field_key=key,
+                        onboarding_group=item.onboarding_group,
+                        eligibility_usable=item.eligibility_usable,
+                        display_order=item.display_order,
+                        payload=item.field_definition.model_dump(
+                            mode="json",
+                            exclude_none=True,
+                        ),
+                    )
+                )
+
+    def list_profile_field_catalog(self) -> list[ProfileFieldCatalogItem]:
+        statement: Select[tuple[CanonicalFieldDefinitionRecord]] = select(
+            CanonicalFieldDefinitionRecord
+        ).order_by(CanonicalFieldDefinitionRecord.display_order)
+        with self._session_factory() as session:
+            return [
+                ProfileFieldCatalogItem(
+                    field_definition=FieldDefinition.model_validate(record.payload),
+                    onboarding_group=record.onboarding_group,
+                    eligibility_usable=record.eligibility_usable,
+                    display_order=record.display_order,
+                )
+                for record in session.scalars(statement)
+            ]
 
     def get_agent_run(self, run_id: str) -> dict[str, Any] | None:
         with self._session_factory() as session:
@@ -344,6 +382,15 @@ class AgentRepository:
         ).where(FieldDefinitionReviewRecord.status == "approved")
         definitions: dict[str, FieldDefinition] = {}
         with self._session_factory() as session:
+            canonical_records = session.scalars(
+                select(CanonicalFieldDefinitionRecord)
+                .where(CanonicalFieldDefinitionRecord.eligibility_usable.is_(True))
+                .order_by(CanonicalFieldDefinitionRecord.display_order)
+            )
+            for record in canonical_records:
+                definition = FieldDefinition.model_validate(record.payload)
+                if definition.review_status == "approved":
+                    definitions[definition.key] = definition
             for record in session.scalars(statement):
                 approved_field = record.payload.get("approved_field")
                 if isinstance(approved_field, dict):

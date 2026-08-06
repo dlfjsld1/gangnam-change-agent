@@ -13,6 +13,7 @@ from sqlalchemy.schema import CreateTable
 from app.database import Database
 from app.db_models import (
     Base,
+    CanonicalFieldDefinitionRecord,
     FieldDefinitionProposalRecord,
     FieldDefinitionReviewRecord,
 )
@@ -20,6 +21,7 @@ from app.repositories.agent_repository import AgentRepository, ReviewConflict
 from app.schemas.agent_run import AgentNodeLog, AgentRun
 from app.schemas.field_definition import (
     FieldDefinition,
+    FieldOption,
     FieldDefinitionProposal,
     FieldDefinitionReview,
 )
@@ -123,6 +125,7 @@ def test_sqlite_repository_persists_agent_result_and_proposal(tmp_path: Path) ->
     assert review_count == 1
     assert set(inspect(database.engine).get_table_names()) == {
         "agent_runs",
+        "canonical_field_definitions",
         "field_definition_proposals",
         "field_definition_reviews",
         "policy_packages",
@@ -148,6 +151,62 @@ def test_sqlite_repository_persists_agent_result_and_proposal(tmp_path: Path) ->
     approved_definitions = repository.list_approved_field_definitions()
     assert [definition.key for definition in approved_definitions] == ["new_condition"]
     assert approved_definitions[0].review_status == "approved"
+
+
+def test_default_profile_fields_are_seeded_and_eligibility_registry_is_filtered(
+    tmp_path: Path,
+) -> None:
+    database = Database(f"sqlite:///{tmp_path / 'agent.db'}")
+    database.create_schema()
+    repository = AgentRepository(database.session_factory)
+
+    repository.ensure_default_profile_fields()
+    repository.ensure_default_profile_fields()
+
+    catalog = repository.list_profile_field_catalog()
+    assert [item.field_definition.key for item in catalog] == [
+        "residence",
+        "age",
+        "employment_status",
+        "frequent_bus_stops",
+        "interest_categories",
+    ]
+    assert [item.onboarding_group for item in catalog] == [
+        "core",
+        "core",
+        "core",
+        "core",
+        "optional",
+    ]
+    interest = catalog[-1]
+    assert interest.eligibility_usable is False
+    assert [option.value for option in interest.field_definition.allowed_values] == [
+        "youth_jobs",
+        "housing_living",
+        "welfare_care",
+        "culture_sports",
+        "transport_facilities",
+        "education_family",
+    ]
+    assert [
+        definition.key for definition in repository.list_approved_field_definitions()
+    ] == [
+        "residence",
+        "age",
+        "employment_status",
+    ]
+    for item in catalog:
+        _validate_contract(
+            item.model_dump(mode="json", exclude_none=True),
+            "ProfileFieldCatalogItem",
+        )
+    with database.session_factory() as session:
+        assert (
+            session.scalar(
+                select(func.count()).select_from(CanonicalFieldDefinitionRecord)
+            )
+            == 5
+        )
 
 
 def test_latest_policy_query_returns_only_approved_version(tmp_path: Path) -> None:
@@ -278,7 +337,16 @@ def test_field_approval_rewrites_policy_and_enables_publish(tmp_path: Path) -> N
         field_reviews=[_review(proposal)],
     )
     approved_field = proposal.proposed_field.model_copy(
-        update={"key": "canonical_condition", "label": "표준 조건"}
+        update={
+            "key": "canonical_condition",
+            "label": "표준 조건",
+            "data_type": "enum",
+            "allowed_values": [
+                FieldOption(value="eligible", label="해당해요"),
+                FieldOption(value="none_of_above", label="해당 사항 없음"),
+            ],
+            "question": "공고일 기준 이 조건에 해당하나요?",
+        }
     )
 
     review = repository.approve_field_definition_review(
@@ -302,6 +370,16 @@ def test_field_approval_rewrites_policy_and_enables_publish(tmp_path: Path) -> N
         field["key"] == "canonical_condition"
         for field in published["required_profile_fields"]
     )
+    published_field = next(
+        field
+        for field in published["required_profile_fields"]
+        if field["key"] == "canonical_condition"
+    )
+    assert published_field["question"] == "공고일 기준 이 조건에 해당하나요?"
+    assert published_field["allowed_values"] == [
+        {"value": "eligible", "label": "해당해요"},
+        {"value": "none_of_above", "label": "해당 사항 없음"},
+    ]
     assert repository.get_approved_policy_package(package["policy_id"]) == published
     assert published in repository.list_approved_policy_packages()
     _validate_contract(review, "FieldDefinitionReview")
@@ -360,7 +438,7 @@ def test_models_compile_for_postgresql_dialect() -> None:
         for table in Base.metadata.sorted_tables
     ]
 
-    assert len(statements) == 5
+    assert len(statements) == 6
     assert all("CREATE TABLE" in statement for statement in statements)
 
 
