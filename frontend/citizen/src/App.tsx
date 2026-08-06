@@ -24,6 +24,12 @@ import policyFixture from "../../../demo-data/approved-policy.json";
 
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 const basePolicyFixture = policyFixture as PolicyPackage;
+type CitizenTab = "home" | "favorites" | "profile";
+type CitizenView = {
+  activeTab: CitizenTab;
+  onboardingMode?: "start" | "edit" | "interests" | "preview";
+  selectedPolicyId?: string;
+};
 const interestField = {
   key: "interest_categories",
   label: "관심 분야",
@@ -64,7 +70,7 @@ export function App() {
   const [isSaving, setIsSaving] = useState(false);
   const [hiddenPolicyIds, setHiddenPolicyIds] = useState<string[]>([]);
   const [favoritePolicyIds, setFavoritePolicyIds] = useState<string[]>([]);
-  const [activeTab, setActiveTab] = useState("home");
+  const [activeTab, setActiveTab] = useState<CitizenTab>("home");
   const [selectedPolicy, setSelectedPolicy] = useState<PolicyPackage>();
   const [onboardingMode, setOnboardingMode] = useState<"start" | "edit" | "interests" | "preview">();
   const [activeFeedIndex, setActiveFeedIndex] = useState(0);
@@ -73,6 +79,7 @@ export function App() {
   const feedTouchStartY = useRef<number | undefined>(undefined);
   const lastFeedTransitionAt = useRef(0);
   const currentFeedCardRef = useRef<HTMLDivElement | null>(null);
+  const historyReady = useRef(false);
 
   useEffect(() => {
     void Promise.all([
@@ -93,6 +100,42 @@ export function App() {
       })
       .finally(() => setReady(true));
   }, []);
+
+  function applyView(view: CitizenView) {
+    setActiveTab(view.activeTab);
+    setOnboardingMode(view.onboardingMode);
+    setSelectedPolicy(view.selectedPolicyId ? policies.find((policy) => policy.policy_id === view.selectedPolicyId) : undefined);
+  }
+
+  function navigate(view: CitizenView) {
+    applyView(view);
+    if (historyReady.current) {
+      window.history.pushState({ citizenView: view }, "");
+    }
+  }
+
+  useEffect(() => {
+    if (!ready) {
+      return;
+    }
+
+    window.history.replaceState({
+      citizenView: { activeTab, onboardingMode, selectedPolicyId: selectedPolicy?.policy_id },
+    }, "");
+    historyReady.current = true;
+
+    const restoreView = (event: PopStateEvent) => {
+      const view = event.state?.citizenView as CitizenView | undefined;
+      if (view) {
+        applyView(view);
+      }
+    };
+    window.addEventListener("popstate", restoreView);
+    return () => {
+      historyReady.current = false;
+      window.removeEventListener("popstate", restoreView);
+    };
+  }, [ready]);
 
   const activeProfile = profile;
   const displayPolicies = policies;
@@ -162,7 +205,7 @@ export function App() {
         onAnswer={saveAnswer}
         onFavorite={toggleFavoritePolicy}
         onHide={hideCurrentPolicy}
-        onShowDetails={setSelectedPolicy}
+        onShowDetails={(selected) => navigate({ activeTab, selectedPolicyId: selected.policy_id })}
         policy={policy}
         profile={activeProfile}
       />
@@ -236,8 +279,7 @@ export function App() {
   async function completeProfile(nextProfile: LocalProfile) {
     await saveProfile(nextProfile);
     setProfile(nextProfile);
-    setActiveTab(onboardingMode === "edit" || onboardingMode === "interests" ? "profile" : "home");
-    setOnboardingMode(undefined);
+    navigate({ activeTab: onboardingMode === "edit" || onboardingMode === "interests" ? "profile" : "home" });
   }
 
   return (
@@ -249,7 +291,7 @@ export function App() {
           key={onboardingMode}
           mode={onboardingMode}
           onComplete={completeProfile}
-          onClose={onboardingMode !== "start" ? () => setOnboardingMode(undefined) : undefined}
+          onClose={onboardingMode !== "start" ? () => window.history.back() : undefined}
           policy={displayPolicies[0] ?? basePolicyFixture}
         />
       ) : <>
@@ -257,9 +299,9 @@ export function App() {
         <ProfilePage
           key="profile"
           fields={(displayPolicies[0] ?? basePolicyFixture).required_profile_fields}
-          onEdit={() => setOnboardingMode("edit")}
-          onEditInterests={() => setOnboardingMode("interests")}
-          onPreviewIntro={() => setOnboardingMode("preview")}
+          onEdit={() => navigate({ activeTab: "profile", onboardingMode: "edit" })}
+          onEditInterests={() => navigate({ activeTab: "profile", onboardingMode: "interests" })}
+          onPreviewIntro={() => navigate({ activeTab: "profile", onboardingMode: "preview" })}
           onReset={resetLocalData}
           profile={profile}
         />
@@ -268,7 +310,6 @@ export function App() {
       <header className="hero">
         <div className="hero-topline">
           <p>강남 Change Agent</p>
-          <span aria-hidden="true" className="header-icon"><BellIcon /></span>
         </div>
         {activeTab === "favorites" ? (
           <h1 className="count-hero-title">
@@ -337,7 +378,7 @@ export function App() {
             actionLabel="내 정보 확인"
             description="새로운 공고가 들어오면 여기에서 확인할 수 있어요."
             kind="match"
-            onAction={() => setActiveTab("profile")}
+          onAction={() => navigate({ activeTab: "profile" })}
             title="지금 내 정보와 맞는 공고가 없어요"
           />
         )}
@@ -346,7 +387,7 @@ export function App() {
             actionLabel="홈에서 공고 둘러보기"
             description="관심 있는 공고의 별을 눌러 이곳에 담아보세요."
             kind="favorite"
-            onAction={() => setActiveTab("home")}
+            onAction={() => navigate({ activeTab: "home" })}
             title="아직 담아둔 공고가 없어요"
           />
         )}
@@ -369,20 +410,15 @@ export function App() {
       </>}
 
       <nav aria-label="주요 메뉴" className="bottom-nav">
-        <button aria-current={activeTab === "home" ? "page" : undefined} onClick={() => setActiveTab("home")} type="button"><HomeIcon /><span>홈</span></button>
-        <button aria-current={activeTab === "favorites" ? "page" : undefined} onClick={() => setActiveTab("favorites")} type="button"><StarIcon /><span>즐겨찾기</span></button>
-        <button aria-current={activeTab === "profile" ? "page" : undefined} onClick={() => setActiveTab("profile")} type="button"><FamilyIcon /><span>내 정보</span></button>
+        <button aria-current={activeTab === "home" ? "page" : undefined} onClick={() => navigate({ activeTab: "home" })} type="button"><HomeIcon /><span>홈</span></button>
+        <button aria-current={activeTab === "favorites" ? "page" : undefined} onClick={() => navigate({ activeTab: "favorites" })} type="button"><StarIcon /><span>즐겨찾기</span></button>
+        <button aria-current={activeTab === "profile" ? "page" : undefined} onClick={() => navigate({ activeTab: "profile" })} type="button"><FamilyIcon /><span>내 정보</span></button>
       </nav>
-      {selectedPolicy && <PolicyDetail policy={selectedPolicy} onClose={() => setSelectedPolicy(undefined)} />}
+      {selectedPolicy && <PolicyDetail policy={selectedPolicy} onClose={() => window.history.back()} />}
       </>}
     </main>
     </>
   );
-}
-
-
-function BellIcon() {
-  return <svg aria-hidden="true" className="line-icon bell-icon" fill="none" viewBox="0 0 24 24"><path d="M18 10a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 22h4" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" /></svg>;
 }
 
 
@@ -665,6 +701,25 @@ function Onboarding(props: OnboardingProps) {
   const [isSaving, setIsSaving] = useState(false);
   const field = fields[fieldIndex];
 
+  useEffect(() => {
+    if (props.mode !== "start") {
+      return;
+    }
+
+    const returnToIntro = (event: PopStateEvent) => {
+      if (event.state?.citizenView?.onboardingMode === "start") {
+        setStarted(false);
+      }
+    };
+    window.addEventListener("popstate", returnToIntro);
+    return () => window.removeEventListener("popstate", returnToIntro);
+  }, [props.mode]);
+
+  function startOnboarding() {
+    window.history.pushState({ citizenView: { activeTab: "home", onboardingMode: "start" } }, "");
+    setStarted(true);
+  }
+
   async function complete(profile: LocalProfile) {
     setIsSaving(true);
     try {
@@ -725,7 +780,7 @@ function Onboarding(props: OnboardingProps) {
           </ul>
           <button
             className="onboarding-primary"
-            onClick={props.mode === "preview" ? props.onClose : () => setStarted(true)}
+            onClick={props.mode === "preview" ? props.onClose : startOnboarding}
             type="button"
           >{props.mode === "preview" ? "소개 닫기" : "시작하기"}</button>
           {props.mode !== "preview" && <p className="onboarding-time">1분이면 끝나요</p>}
@@ -748,12 +803,17 @@ function Onboarding(props: OnboardingProps) {
             </div>
           ))}
         </dl>
-        <section className="onboarding-more-info">
-          <h2>관심 분야도 알려주실래요?</h2>
-          <p>공고가 많아지면 관심 있는 분야를 먼저 살펴볼 수 있어요.</p>
-        </section>
-        <button className="onboarding-primary" onClick={() => setStep("interests")} type="button">더 입력하기</button>
-        <button className="onboarding-secondary" disabled={isSaving} onClick={() => void complete(draft)} type="button">바로 둘러보기</button>
+        <button className="onboarding-more-info" onClick={() => setStep("interests")} type="button">
+          <span className="onboarding-optional-label">선택</span>
+          <div>
+            <h2>관심 분야를 추가할까요?</h2>
+            <p>관심 있는 공고를 더 쉽게 찾아볼 수 있어요.</p>
+          </div>
+          <span aria-hidden="true" className="onboarding-more-info-arrow">›</span>
+        </button>
+        <div className="onboarding-summary-actions">
+          <button className="onboarding-secondary" disabled={isSaving} onClick={() => void complete(draft)} type="button">지금 공고 보러가기</button>
+        </div>
       </section>
     );
   }
@@ -761,9 +821,9 @@ function Onboarding(props: OnboardingProps) {
   if (step === "interests") {
     return (
       <section className="onboarding-screen onboarding-form onboarding-interests">
-        <div className="onboarding-topline">
-          {props.onClose ? <button aria-label="내 정보로 돌아가기" className="onboarding-back-button" onClick={props.onClose} type="button"><span aria-hidden="true">←</span> 내 정보</button> : <p>선택 입력</p>}
-        </div>
+        {props.onClose && <div className="onboarding-topline">
+          <button aria-label="내 정보로 돌아가기" className="onboarding-back-button" onClick={props.onClose} type="button"><span aria-hidden="true">←</span> 내 정보</button>
+        </div>}
         <p className="onboarding-step">선택 입력</p>
         <h1>관심 있는 분야를<br />골라 주세요</h1>
         <p className="onboarding-description">여러 개를 골라도 되고, 선택하지 않아도 괜찮아요.</p>
@@ -774,8 +834,10 @@ function Onboarding(props: OnboardingProps) {
             return <button aria-pressed={selected} className="interest-option" key={value} onClick={() => toggleInterest(value)} type="button">{option.label}</button>;
           })}
         </div>
-        <button className="onboarding-primary" disabled={isSaving} onClick={() => void saveInterests()} type="button">선택 완료</button>
-        <button className="onboarding-secondary" disabled={isSaving} onClick={() => void complete(draft)} type="button">나중에 할게요</button>
+        <div className="onboarding-action-group">
+          <button className="onboarding-primary" disabled={isSaving} onClick={() => void saveInterests()} type="button">선택 완료</button>
+          <button className="onboarding-secondary" disabled={isSaving} onClick={() => void complete(draft)} type="button">나중에 설정할게요</button>
+        </div>
       </section>
     );
   }
