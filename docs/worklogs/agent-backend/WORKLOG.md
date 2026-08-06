@@ -53,6 +53,35 @@
 
 ## Change history
 
+### 2026-08-06 — 승인 전 첨부 S3 검토 저장
+
+#### Summary
+
+Agent 실행이 수집한 공식 첨부를 파싱 결과와 무관하게 비공개 `review-attachments/`에 저장하고, 관리자 실행 상세 조회 시에만 15분 presigned `review_url`을 생성하도록 구현했다. 저장 실패는 실행을 폐기하지 않고 `review_required` 사유로 남긴다.
+
+#### Changed files
+
+- `backend/app/services/attachment_archive.py`
+- `backend/app/services/agent_execution.py`
+- `backend/app/schemas/source_notice.py`
+- `backend/app/main.py`
+- `backend/tests/test_attachment_archive.py`
+- `backend/tests/test_agent_execution.py`
+
+#### Contract impact
+
+관리자 실행 상세 attachment에 선택적 `review_url`이 추가됐다.
+
+#### Tests
+
+- `pytest tests/test_attachment_archive.py tests/test_agent_execution.py tests/test_main.py`: 24 passed
+- 변경 Python 파일 `ruff check --ignore TRY004`: passed
+- 전체 `ruff check`: 기존 파일의 선행 lint 38건으로 failed
+
+#### Remaining work
+
+- AWS ECS task role·환경변수 적용 후 실제 첨부 업로드와 presigned URL smoke 확인
+
 ### 2026-08-05 — 관리자 수동 새 공고 확인 API
 
 #### Summary

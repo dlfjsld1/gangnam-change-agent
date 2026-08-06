@@ -1,0 +1,10 @@
+.git
+.omx
+.tool-install-cache
+.terraform
+**/.venv
+**/node_modules
+**/dist
+**/__pycache__
+**/.pytest_cache
+*.tfstate*

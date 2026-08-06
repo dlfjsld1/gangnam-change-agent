@@ -91,6 +91,7 @@ review_required여도 생성된 AgentRun은 `processed_runs`에 포함한다.
 - GET /api/admin/policy-packages/{policy_id}
 - POST /api/field-definition-reviews/{review_id}/approve
 - POST /api/field-definition-reviews/{review_id}/reject
+- POST /api/field-definition-reviews/{review_id}/edit (`approved_field`를 검증한 뒤 승인)
 - GET /api/agent-runs/{run_id}
 - POST /api/policy-packages/{policy_id}/approve
 - POST /api/policy-packages/{policy_id}/reject
@@ -123,6 +124,18 @@ review_required여도 생성된 AgentRun은 `processed_runs`에 포함한다.
 ```json
 {
   "agent_run": {},
+  "source_notice": {
+    "attachments": [
+      {
+        "filename": "지원사업 안내.pdf",
+        "url": "https://www.gangnam.go.kr/original.pdf",
+        "storage_key": "review-attachments/gangnam_public_notice/61922/abc123-지원사업 안내.pdf",
+        "review_url": "https://s3.ap-northeast-2.amazonaws.com/...signed...",
+        "public_url": null,
+        "sha256": "..."
+      }
+    ]
+  },
   "policy_package": {},
   "field_definition_proposals": [],
   "field_definition_reviews": []
@@ -130,6 +143,8 @@ review_required여도 생성된 AgentRun은 `processed_runs`에 포함한다.
 ```
 
 이 관리자 조회 API도 시민 프로필이나 시민별 판정 결과를 반환하지 않는다.
+`review_url`은 S3 검토 저장소가 설정된 환경에서만 반환하는 단기 presigned URL이며
+DB에 저장하지 않는다. 파싱 실패 여부와 관계없이 수집된 공식 첨부에 제공한다.
 
 HumanHandoff 별도 API는 만들지 않는다. 사람 검토 필요 상태는 AgentRun의 review_required, review_reason, unresolved_fields로 전달한다.
 

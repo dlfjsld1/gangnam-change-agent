@@ -47,3 +47,34 @@ export interface AgentRun {
   policy_id?: string | null;
 }
 
+
+export interface PolicyPackage {
+  policy_id: string;
+  title: string;
+  summary: string;
+  review: {
+    status: ReviewStatus;
+    reviewed_at: string | null;
+  };
+}
+
+export interface SourceNotice {
+  source_url: string;
+  title: string;
+  attachments: Array<{
+    filename: string;
+    url: string;
+    file_type: string;
+    storage_key: string | null;
+    review_url?: string | null;
+    public_url: string | null;
+    sha256: string | null;
+  }>;
+}
+
+export interface AdminRunDetail {
+  agent_run: AgentRun;
+  source_notice: SourceNotice | null;
+  policy_package: PolicyPackage | null;
+  field_definition_reviews: FieldDefinitionReview[];
+}

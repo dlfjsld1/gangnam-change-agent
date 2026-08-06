@@ -40,6 +40,18 @@ class FakeGraph:
         return self.result
 
 
+class FakeReviewAttachmentStore:
+    def __init__(self) -> None:
+        self.archived = False
+
+    def archive_notice(self, notice: SourceNotice) -> SourceNotice:
+        self.archived = True
+        return notice
+
+    def add_review_urls(self, notice: SourceNotice) -> SourceNotice:
+        return notice
+
+
 def _notice() -> SourceNotice:
     return SourceNotice(
         source_id="61922",
@@ -130,6 +142,7 @@ def test_execution_uses_approved_previous_policy_and_persists_result() -> None:
         }
     )
     repository = FakeRepository(previous)
+    review_store = FakeReviewAttachmentStore()
 
     def runtime_factory(registry: object) -> object:
         assert registry.find("age") is not None
@@ -139,6 +152,7 @@ def test_execution_uses_approved_previous_policy_and_persists_result() -> None:
         repository,
         runtime_factory=runtime_factory,
         graph_builder=lambda runtime: graph,
+        review_attachment_store=review_store,
     )
 
     response = service.run(
@@ -153,6 +167,7 @@ def test_execution_uses_approved_previous_policy_and_persists_result() -> None:
     assert response.evidence_issues == [evidence_issue]
     assert repository.saved is not None
     assert repository.saved["policy_package"] == package
+    assert review_store.archived
 
 
 def test_execution_rejects_missing_or_unapproved_previous_policy() -> None:

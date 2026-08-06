@@ -1,32 +1,50 @@
 import { fixtureReviews, fixtureRun } from "./fixture";
-import type { AgentRun, FieldDefinition, FieldDefinitionReview, ReviewStatus } from "./types";
+import type { AdminRunDetail, AgentRun, FieldDefinition, FieldDefinitionReview, PolicyPackage, ReviewStatus, SourceNotice } from "./types";
 
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${apiBaseUrl}${path}`, init);
   if (!response.ok) {
-    throw new Error(`${response.status} ${response.statusText}`);
+    const detail = await response.json().then((body) => body.detail as string).catch(() => response.statusText);
+    throw new ApiError(response.status, detail);
   }
   return response.json() as Promise<T>;
+}
+
+export class ApiError extends Error {
+  constructor(public status: number, message: string) {
+    super(message);
+  }
 }
 
 export async function loadAdminData(): Promise<{
   reviews: FieldDefinitionReview[];
   run: AgentRun;
+  runs: AgentRun[];
+  policies: PolicyPackage[];
+  sourceNotice: SourceNotice | null;
   source: "api" | "fixture";
 }> {
   try {
-    const reviews = await request<FieldDefinitionReview[]>("/api/field-definition-reviews");
-    const runId = reviews[0]?.run_id;
+    const [reviews, runs, policies] = await Promise.all([
+      request<FieldDefinitionReview[]>("/api/field-definition-reviews?status=pending"),
+      request<AgentRun[]>("/api/agent-runs"),
+      request<PolicyPackage[]>("/api/admin/policy-packages"),
+    ]);
+    const runId = reviews[0]?.run_id ?? runs[0]?.run_id;
     if (!runId) {
-      return { reviews, run: fixtureRun, source: "api" };
+      return { reviews, run: fixtureRun, runs, policies, sourceNotice: null, source: "api" };
     }
-    const run = await request<AgentRun>(`/api/agent-runs/${encodeURIComponent(runId)}`);
-    return { reviews, run, source: "api" };
+    const detail = await loadRunDetail(runId);
+    return { reviews, run: detail.agent_run, runs, policies, sourceNotice: detail.source_notice, source: "api" };
   } catch {
-    return { reviews: fixtureReviews, run: fixtureRun, source: "fixture" };
+    return { reviews: fixtureReviews, run: fixtureRun, runs: [fixtureRun], policies: [], sourceNotice: null, source: "fixture" };
   }
+}
+
+export function loadRunDetail(runId: string): Promise<AdminRunDetail> {
+  return request(`/api/admin/agent-runs/${encodeURIComponent(runId)}`);
 }
 
 export async function discoverNewNotices(): Promise<{
@@ -46,11 +64,15 @@ export async function submitReview(
   action: ReviewStatus | "edit",
   field: FieldDefinition,
 ): Promise<void> {
-  const body = action === "edit" ? JSON.stringify({ approved_field: field }) : undefined;
-  await request(`/api/field-definition-reviews/${encodeURIComponent(reviewId)}/${action}`, {
+  const body = JSON.stringify(action === "edit" ? { approved_field: field } : {});
+  const endpointAction = action === "rejected" ? "reject" : "approve";
+  await request(`/api/field-definition-reviews/${encodeURIComponent(reviewId)}/${endpointAction}`, {
     method: "POST",
-    headers: body ? { "Content-Type": "application/json" } : undefined,
+    headers: { "Content-Type": "application/json" },
     body,
   });
 }
 
+export function submitPolicyReview(policyId: string, action: "approve" | "reject"): Promise<PolicyPackage> {
+  return request(`/api/policy-packages/${encodeURIComponent(policyId)}/${action}`, { method: "POST" });
+}

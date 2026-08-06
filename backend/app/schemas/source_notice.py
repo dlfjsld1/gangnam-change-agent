@@ -3,7 +3,6 @@ from typing import Literal
 
 from pydantic import BaseModel
 
-
 SourceBoard = Literal[
     "gangnam_public_notice",
     "gangnam_job_notice",
@@ -16,6 +15,7 @@ class SourceAttachment(BaseModel):
     url: str
     file_type: Literal["hwpx", "pdf", "image", "hwp", "other"]
     storage_key: str | None = None
+    review_url: str | None = None
     public_url: str | None = None
     sha256: str | None = None
 

@@ -95,3 +95,14 @@
 - Reason: 공식 사이트 링크 변경 후에도 승인 당시 근거를 재현하고, PWA 사용자가 만료 없는 공개 첨부 링크를 열 수 있게 한다.
 - Affected areas: backend, frontend/citizen, frontend/admin, infra
 - Contract impact: 관리자 실행 상세 응답에 `source_notice`가 추가되며 기존 PolicyPackage evidence 구조는 유지한다.
+
+## D-009 — 승인 전 첨부의 비공개 S3 관리자 검토
+
+- Date: 2026-08-06
+- Status: accepted
+- Previous design: 승인 전에는 공식 원본 URL만 표시하고 정책 최종 승인 시 evidence 첨부를 S3에 저장한다.
+- New design: Agent 실행이 공고를 수집하면 파싱 성공 여부와 관계없이 공식 첨부를 S3 `review-attachments/`에 비공개 저장한다. 관리자 실행 상세는 만료되는 presigned `review_url`을 제공하며, 최종 승인 시 evidence 첨부만 기존 `public-attachments/`에 공개 archive한다.
+- Privacy boundary: 검토 첨부는 CloudFront 공개 경로에서 제외하고 ECS task role만 읽고 쓴다. 시민 프로필과 시민별 판정 결과는 저장하지 않으며 presigned URL은 DB에 저장하지 않는다.
+- Reason: 파싱 실패·OCR 실패·근거 불일치 정책도 관리자가 수집 당시 원본 첨부로 검증할 수 있어야 한다.
+- Affected areas: backend, frontend/admin, infra
+- Affected contracts: `docs/contracts/api.md`, `docs/contracts/PUBLIC_ATTACHMENT_FRONTEND_INTEGRATION.md`

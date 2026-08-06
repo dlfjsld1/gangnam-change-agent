@@ -26,3 +26,9 @@ frontend/*/dist/
 # Operating system files
 .DS_Store
 Thumbs.db
+.tool-install-cache/
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+infra/tfplan
