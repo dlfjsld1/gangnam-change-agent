@@ -13,7 +13,8 @@ import type { MatchStatus } from "./matcher/evaluateRule";
 import { loadApprovedPolicyPackages } from "./policy/policyApi";
 import type { PolicyPackage } from "./policy/policyPackage";
 import { recordAnswer } from "./profile/answerProfile";
-import type { FieldDefinition, LocalProfile } from "./profile/dynamicProfile";
+import type { FieldDefinition, LocalProfile, ProfileFieldCatalogItem } from "./profile/dynamicProfile";
+import { loadProfileFieldCatalog } from "./profile/profileFieldApi";
 import {
   clearProfile,
   loadProfile,
@@ -30,22 +31,6 @@ type CitizenView = {
   onboardingMode?: "start" | "edit" | "interests" | "preview";
   selectedPolicyId?: string;
 };
-const interestField = {
-  key: "interest_categories",
-  label: "관심 분야",
-  data_type: "list",
-  allowed_values: [
-    { value: "youth_jobs", label: "청년 · 일자리" },
-    { value: "housing_living", label: "주거 · 생활 지원" },
-    { value: "welfare_care", label: "복지 · 돌봄" },
-    { value: "culture_sports", label: "문화 · 체육" },
-    { value: "transport_facilities", label: "교통 · 시설" },
-    { value: "education_family", label: "교육 · 가족" },
-  ],
-  question: "관심 있는 분야를 골라 주세요.",
-  sensitivity: "low",
-  review_status: "approved",
-} satisfies FieldDefinition;
 function today(): string {
   return new Date().toISOString().slice(0, 10);
 }
@@ -61,10 +46,21 @@ async function fetchPolicyPackages(): Promise<Response> {
   }
 }
 
+async function fetchProfileFields(): Promise<Response> {
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), 3_000);
+  try {
+    return await fetch(`${apiBaseUrl}/api/profile-fields`, { signal: controller.signal });
+  } finally {
+    window.clearTimeout(timeout);
+  }
+}
+
 
 export function App() {
   const [profile, setProfile] = useState<LocalProfile>({});
   const [policies, setPolicies] = useState<PolicyPackage[]>([]);
+  const [profileFieldCatalog, setProfileFieldCatalog] = useState<ProfileFieldCatalogItem[]>([]);
   const [policySource, setPolicySource] = useState<"api" | "unavailable">("unavailable");
   const [ready, setReady] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -87,12 +83,14 @@ export function App() {
       loadHiddenPolicyIds(),
       loadFavoritePolicyIds(),
       loadApprovedPolicyPackages(fetchPolicyPackages),
+      loadProfileFieldCatalog(fetchProfileFields),
     ])
-      .then(([savedProfile, savedHiddenPolicyIds, savedFavoritePolicyIds, policyResult]) => {
+      .then(([savedProfile, savedHiddenPolicyIds, savedFavoritePolicyIds, policyResult, fieldCatalog]) => {
         setProfile(savedProfile);
         setHiddenPolicyIds(savedHiddenPolicyIds);
         setFavoritePolicyIds(savedFavoritePolicyIds);
         setPolicies(policyResult.policies);
+        setProfileFieldCatalog(fieldCatalog);
         setPolicySource(policyResult.source);
         if (Object.keys(savedProfile).length === 0) {
           setOnboardingMode("start");
@@ -139,6 +137,15 @@ export function App() {
 
   const activeProfile = profile;
   const displayPolicies = policies;
+  const profileFields = profileFieldCatalog.length > 0
+    ? profileFieldCatalog.map((item) => item.field_definition)
+    : (displayPolicies[0] ?? basePolicyFixture).required_profile_fields;
+  const coreProfileFields = profileFieldCatalog.length > 0
+    ? profileFieldCatalog.filter((item) => item.onboarding_group === "core").map((item) => item.field_definition)
+    : profileFields;
+  const optionalProfileFields = profileFieldCatalog
+    .filter((item) => item.onboarding_group === "optional")
+    .map((item) => item.field_definition);
   const availablePolicies = useMemo(
     () => displayPolicies.filter((policy) => !hiddenPolicyIds.includes(policy.policy_id)),
     [displayPolicies, hiddenPolicyIds],
@@ -290,15 +297,16 @@ export function App() {
           initialProfile={onboardingMode === "edit" || onboardingMode === "interests" ? profile : {}}
           key={onboardingMode}
           mode={onboardingMode}
+          optionalFields={optionalProfileFields}
           onComplete={completeProfile}
           onClose={onboardingMode !== "start" ? () => window.history.back() : undefined}
-          policy={displayPolicies[0] ?? basePolicyFixture}
+          coreFields={coreProfileFields}
         />
       ) : <>
       {activeTab === "profile" ? (
         <ProfilePage
           key="profile"
-          fields={(displayPolicies[0] ?? basePolicyFixture).required_profile_fields}
+          fields={profileFields}
           onEdit={() => navigate({ activeTab: "profile", onboardingMode: "edit" })}
           onEditInterests={() => navigate({ activeTab: "profile", onboardingMode: "interests" })}
           onPreviewIntro={() => navigate({ activeTab: "profile", onboardingMode: "preview" })}
@@ -485,8 +493,9 @@ function ProfilePage(props: {
   onReset: () => Promise<void>;
   profile: LocalProfile;
 }) {
-  const fields = [...props.fields.filter((field) => field.review_status === "approved"), interestField];
-  const savedInterests = props.profile[interestField.key]?.value;
+  const fields = props.fields.filter((field) => field.review_status === "approved");
+  const interestField = fields.find((field) => field.key === "interest_categories");
+  const savedInterests = interestField ? props.profile[interestField.key]?.value : undefined;
   const hasSavedInterests = Array.isArray(savedInterests) && savedInterests.length > 0;
 
   return (
@@ -679,15 +688,17 @@ function PolicyDetail(props: { onClose: () => void; policy: PolicyPackage }) {
 
 
 interface OnboardingProps {
+  coreFields: FieldDefinition[];
   initialProfile: LocalProfile;
   mode: "start" | "edit" | "interests" | "preview";
   onClose?: () => void;
   onComplete: (profile: LocalProfile) => Promise<void>;
-  policy: PolicyPackage;
+  optionalFields: FieldDefinition[];
 }
 
 function Onboarding(props: OnboardingProps) {
-  const fields = props.policy.required_profile_fields.filter((field) => field.review_status === "approved");
+  const fields = props.coreFields.filter((field) => field.review_status === "approved");
+  const interestField = props.optionalFields.find((field) => field.key === "interest_categories");
   const [started, setStarted] = useState(props.mode === "edit" || props.mode === "interests");
   const [draft, setDraft] = useState(props.initialProfile);
   const [fieldIndex, setFieldIndex] = useState(0);
@@ -695,7 +706,7 @@ function Onboarding(props: OnboardingProps) {
     props.mode === "interests" ? "interests" : "questions",
   );
   const [selectedInterests, setSelectedInterests] = useState<string[]>(() => {
-    const savedValue = props.initialProfile[interestField.key]?.value;
+    const savedValue = interestField ? props.initialProfile[interestField.key]?.value : undefined;
     return Array.isArray(savedValue) ? savedValue.filter((value): value is string => typeof value === "string") : [];
   });
   const [isSaving, setIsSaving] = useState(false);
@@ -747,6 +758,10 @@ function Onboarding(props: OnboardingProps) {
   }
 
   async function saveInterests() {
+    if (!interestField) {
+      await complete(draft);
+      return;
+    }
     const nextDraft = { ...draft };
     if (selectedInterests.length > 0) {
       Object.assign(nextDraft, recordAnswer(draft, interestField, selectedInterests, today()));
@@ -803,14 +818,14 @@ function Onboarding(props: OnboardingProps) {
             </div>
           ))}
         </dl>
-        <button className="onboarding-more-info" onClick={() => setStep("interests")} type="button">
+        {interestField && <button className="onboarding-more-info" onClick={() => setStep("interests")} type="button">
           <span className="onboarding-optional-label">선택</span>
           <div>
             <h2>관심 분야를 추가할까요?</h2>
             <p>관심 있는 공고를 더 쉽게 찾아볼 수 있어요.</p>
           </div>
           <span aria-hidden="true" className="onboarding-more-info-arrow">›</span>
-        </button>
+        </button>}
         <div className="onboarding-summary-actions">
           <button className="onboarding-secondary" disabled={isSaving} onClick={() => void complete(draft)} type="button">지금 공고 보러가기</button>
         </div>
@@ -828,7 +843,7 @@ function Onboarding(props: OnboardingProps) {
         <h1>관심 있는 분야를<br />골라 주세요</h1>
         <p className="onboarding-description">여러 개를 골라도 되고, 선택하지 않아도 괜찮아요.</p>
         <div className="interest-options" role="group" aria-label="관심 분야">
-          {interestField.allowed_values?.map((option) => {
+          {interestField?.allowed_values?.map((option) => {
             const value = String(option.value);
             const selected = selectedInterests.includes(value);
             return <button aria-pressed={selected} className="interest-option" key={value} onClick={() => toggleInterest(value)} type="button">{option.label}</button>;

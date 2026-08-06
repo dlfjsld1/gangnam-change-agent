@@ -18,3 +18,10 @@ export type FieldDefinition = {
   validity_days?: number;
   review_status: "pending" | "approved" | "rejected";
 };
+
+export type ProfileFieldCatalogItem = {
+  field_definition: FieldDefinition;
+  onboarding_group: "core" | "optional";
+  eligibility_usable: boolean;
+  display_order: number;
+};

@@ -4,6 +4,7 @@ import test from "node:test";
 import { evaluateRule, selectNextQuestion } from "./evaluateRule.ts";
 import { recordAnswer } from "../profile/answerProfile.ts";
 import { loadApprovedPolicyPackages } from "../policy/policyApi.ts";
+import { loadProfileFieldCatalog } from "../profile/profileFieldApi.ts";
 import policyPackage from "../../../../demo-data/approved-policy.json" with { type: "json" };
 import staleRefreshSmoke from "../../../../demo-data/stale-refresh-smoke.json" with { type: "json" };
 import unknownQuestionSmoke from "../../../../demo-data/unknown-question-smoke.json" with { type: "json" };
@@ -258,6 +259,44 @@ test("uses only approved API policies and reports an unavailable API", async () 
     async () => { throw new Error("offline"); },
   );
   assert.deepEqual(fallbackResult, { policies: [], source: "unavailable" });
+});
+
+
+test("loads canonical profile fields in onboarding display order", async () => {
+  const fields = await loadProfileFieldCatalog(async () => ({
+    ok: true,
+    json: async () => [
+      {
+        field_definition: {
+          key: "interest_categories",
+          label: "관심 분야",
+          data_type: "list",
+          question: "관심 있는 분야를 선택해 주세요.",
+          sensitivity: "low",
+          review_status: "approved",
+        },
+        onboarding_group: "optional",
+        eligibility_usable: false,
+        display_order: 50,
+      },
+      {
+        field_definition: {
+          key: "residence",
+          label: "거주 지역",
+          data_type: "string",
+          question: "현재 거주하는 강남구의 동을 알려주세요.",
+          sensitivity: "medium",
+          review_status: "approved",
+        },
+        onboarding_group: "core",
+        eligibility_usable: true,
+        display_order: 10,
+      },
+    ],
+  }));
+
+  assert.deepEqual(fields.map((item) => item.field_definition.key), ["residence", "interest_categories"]);
+  assert.deepEqual(fields.map((item) => item.onboarding_group), ["core", "optional"]);
 });
 
 
