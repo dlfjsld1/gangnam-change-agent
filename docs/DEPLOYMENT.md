@@ -17,6 +17,8 @@ App Runner는 서울 리전을 지원하지 않으므로 사용하지 않는다.
 
 https://d25409t9vvq1vj.cloudfront.net
 
+현재 배포 baseline은 health, 관리자 조회 API, 승인 정책 조회와 CORS를 확인했다. 최신 profile catalog, enum 수정 승인과 비공개 검토 첨부 변경은 main 병합 후 Backend image·Admin build를 갱신하고 전체 smoke를 다시 수행한다.
+
 ## 공개 근거 첨부 URL
 
 https://dpjy1ffhia6ml.cloudfront.net
@@ -26,6 +28,7 @@ https://dpjy1ffhia6ml.cloudfront.net
     $backendUrl = terraform -chdir=infra output -raw backend_url
     Invoke-RestMethod "$backendUrl/health"
     Invoke-RestMethod "$backendUrl/api/policy-packages"
+    Invoke-RestMethod "$backendUrl/api/profile-fields"
     Invoke-RestMethod "$backendUrl/api/field-definition-reviews"
     aws logs tail /ecs/gangnam-change-agent-backend --region ap-northeast-2 --since 15m
     terraform -chdir=infra plan -detailed-exitcode

@@ -39,6 +39,9 @@ Agent 개발 일부를 다른 팀원에게 나누는 것은 선택사항이다.
 일부를 잠시 맡기기 위한 제한된 문맥이다. 새 프로젝트를 시작하거나 코드
 ownership을 이전하는 문서가 아니다.
 
+현재 활성화된 임시 위임 Task는 없다. 완료된 Task는
+`docs/archive/completed-tasks/`에 기록용으로 보관하며 현재 작업 지시로 사용하지 않는다.
+
 Task 수행자는 다음 순서만 읽고 구현을 시작한다.
 
 1. `AGENTS.md`
@@ -96,12 +99,16 @@ Task 수행자는 다음 순서만 읽고 구현을 시작한다.
    ├─ PROJECT_CONTEXT.md
    ├─ DECISIONS.md
    ├─ tasks/
-   │  ├─ TASK-001-field-registry-node.md
-   │  └─ TASK-002-review-node.md
+   │  └─ (현재 활성 Task 없음)
+   ├─ archive/
+   │  └─ completed-tasks/
    ├─ contracts/
    │  ├─ policy-package.schema.json
    │  ├─ field-definition.schema.json
+   │  ├─ profile-field-catalog-item.schema.json
    │  └─ api.md
+   ├─ deployment/
+   │  └─ BACKEND_CONTAINER_HANDOFF.md
    └─ worklogs/
       ├─ agent-backend/
       │  └─ WORKLOG.md
@@ -200,6 +207,7 @@ Work log는 프로젝트 전체 기획을 공지하는 파일이 아니다.
 - Task 문서는 현재 코드와 contracts를 대체하지 않는다.
 - Task에 명시되지 않은 Agent Backend 작업으로 범위를 확장하지 않는다.
 - Task 종료 후 장기 진행 상태는 담당별 Work log에서만 관리한다.
+- 완료된 Task는 `docs/archive/completed-tasks/`로 이동하며 다시 배정하지 않는다.
 
 ## `docs/deployment/`
 
@@ -620,10 +628,11 @@ docs/
 
 ## 배포
 
-- AWS보다 로컬 end-to-end 동작을 먼저 확인한다.
-- Kubernetes, 복잡한 VPC, Terraform 등 MVP에 불필요한 인프라는 추가하지 않는다.
+- 로컬 검증 후 현재 Terraform으로 관리하는 CloudFront, 비공개 S3, public ALB, private ECS Fargate, private RDS PostgreSQL, ECR, Secrets Manager와 NAT Gateway 구성을 사용한다.
+- 현재 구조를 벗어난 Kubernetes나 별도 배포 플랫폼은 팀 합의 없이 추가하지 않는다.
 - `.env.example`, CORS, API base URL, health check, HTTPS를 확인한다.
-- 네트워크 실패에 대비한 demo fixture와 화면 증빙을 유지한다.
+- 네트워크 실패 동작은 담당 Work log와 현재 구현을 따른다. 시민 PWA는 승인 정책 API 실패를 사용자에게 표시하고 정책 fixture로 대체하지 않으며, 관리자 화면의 기존 fixture fallback을 변경하려면 별도 합의한다.
+- Git push 자동 배포는 없으므로 프론트는 build·S3 sync·CloudFront invalidation, 백엔드는 Docker build·ECR push·ECS rolling deployment를 수행한다.
 - 백엔드 컨테이너와 AWS 배포 전 `docs/deployment/BACKEND_CONTAINER_HANDOFF.md`를 읽고 현재 준비 상태와 미구현 항목을 구분한다.
 
 ## Git 협업 세부사항

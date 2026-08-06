@@ -37,6 +37,11 @@
 - [x] 내 정보 상단의 중복 안내를 줄이고 일반 텍스트 색을 차콜 회색으로 정리한다.
 - [x] 내 정보 관리 동작을 과한 강조 카드 대신 하나의 설정 목록으로 단순화한다.
 - [x] 발표용 리모컨과 목업 공고 전환을 제거하고, 승인 정책 API 결과만 시민 화면에 표시한다.
+- [ ] `GET /api/profile-fields`를 불러와 `field_definition`과 `display_order`로 온보딩 질문을 구성한다.
+- [ ] `core` 필드는 기본정보 단계, `optional`의 `interest_categories`는 선택 입력 단계에 연결하고 로컬 하드코딩을 제거한다.
+- [ ] enum의 `해당 사항 없음`은 실제 값으로 저장하고, `잘 모르겠어요`는 값을 저장하지 않아 `UNKNOWN`을 유지한다.
+- [ ] `frequent_bus_stops`를 문자열 배열로 IndexedDB에만 저장한다.
+- [ ] profile catalog API 실패 상태를 개인정보 전송 없이 사용자에게 안내하고 관련 test·production build를 통과한다.
 
 ## Completion criteria
 
@@ -57,6 +62,8 @@
 
 - docs/contracts/policy-package.schema.json
 - docs/contracts/field-definition.schema.json
+- docs/contracts/profile-field-catalog-item.schema.json
+- docs/contracts/api.md
 
 ## Change history
 

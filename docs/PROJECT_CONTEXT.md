@@ -47,7 +47,11 @@ Gangnam Change Agent는 강남구 공고와 첨부문서의 변경을 Agent가 �
 
 ## MVP boundary
 
-현재는 fixture 기반 보일러플레이트다. 실제 Scrapling, HWPX/PDF 파싱, LangGraph 실행, 관리자 승인 UI, 시민 질문 화면은 각 담당 브랜치에서 구현한다.
+현재 저장소에는 Scrapling 정적 Fetcher 수집, HTML·PDF·HWPX·이미지 분석, 필요한 OpenAI OCR, LangGraph 실행, 이전 정책 diff, 근거 검증, FieldDefinitionReview, PolicyPackage 승인·공개, 시민 로컬 판정과 관리자 검토 UI가 구현돼 있다. 관리자 웹, 시민 PWA와 Backend API의 AWS 기본 배포도 확인했다.
+
+최신 구현은 기본 프로필 canonical field catalog와 문맥형 질문·enum 선택지 수정 승인을 포함한다. Citizen PWA가 `GET /api/profile-fields`를 소비해 임시 관심 분야 정의를 제거하고, `잘 모르겠어요`를 저장하지 않는 `UNKNOWN` 유지 동작과 자주 쓰는 정류장 입력을 연결하는 작업이 남아 있다. 최신 변경을 AWS에 다시 배포한 뒤 수집 → 검토 → 승인 → 시민 반영 전체 smoke도 수행해야 한다.
+
+MVP에서 제외하는 범위는 주기 크롤링, 실시간 정책 push, 관리자 mutation API 운영 인증, 바이너리 HWP 파서와 다수 정책을 합친 전역 질문 우선순위 최적화다.
 
 ## MVP public sources
 

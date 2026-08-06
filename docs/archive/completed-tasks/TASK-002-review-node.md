@@ -1,5 +1,9 @@
 # TASK-002 — Human Review Node
 
+> **Completed / Archived**
+> 이 임시 위임 Task는 구현과 인계가 완료되었습니다. 현재 작업 지시로 사용하지 말고,
+> 최신 상태와 다음 작업은 담당 Work log를 확인합니다.
+
 ## Task 성격
 
 이 문서는 Admin·통합 담당의 Codex에게 Agent Backend의 Human Review 로직을

@@ -36,6 +36,7 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000
 현재 컨테이너 smoke 범위:
 
 - `GET /health`가 `{"status":"ok"}`를 반환한다.
+- `GET /api/profile-fields`가 PWA 온보딩용 승인 canonical field 정의를 반환한다.
 - 승인 정책 fixture 조회 API가 실행된다.
 - `POST /api/agent-runs`가 LangGraph를 실행하고 결과를 DB에 저장한다.
 - `POST /api/notice-discovery-runs`가 강남구 공식 게시판을 Scrapling Fetcher로
@@ -48,16 +49,19 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000
 - 연결된 모든 field review가 승인된 PolicyPackage만 시민 조회 API에 공개된다.
 - FastAPI lifespan에서 SQLAlchemy schema를 초기화한다.
 - OpenAI client는 Agent 요청 전에는 외부 API를 호출하지 않는다.
+- 수집한 공식 첨부를 비공개 `review-attachments/`에 저장하고 관리자 상세 조회에서 단기 presigned URL을 제공한다.
+- 최종 승인된 evidence 첨부만 `public-attachments/`에 archive한다.
 - 전체 백엔드 자동 테스트, Ruff와 formatter 검증을 통과한 상태에서 전달한다.
 
-아직 실제 배포 기능으로 간주하면 안 되는 항목:
+현재 AWS baseline은 CloudFront → ALB → private ECS Fargate와 private RDS PostgreSQL 연결, 관리자·시민 CloudFront, 공개 첨부 S3까지 배포 확인했다. 최신 image와 정적 build를 배포한 뒤 다시 확인해야 하는 항목:
 
-- PostgreSQL 서버를 사용한 live integration test
+- profile catalog와 enum 수정 승인까지 포함한 Agent 실행 → 검토 → Publish → 시민 조회 전체 smoke
+- 비공개 `review-attachments/` 업로드와 관리자 presigned URL 열기 smoke
 - 관리자 mutation API의 운영 인증·접근 제한
 
-초기 Docker smoke는 위 미구현 항목을 기다리지 않고 `/health` 기준으로 진행할
-수 있다. PostgreSQL 연결 후에는 Agent 실행부터 검토와 Publish까지 같은 이미지에서
-통합 검증한다.
+새 이미지는 먼저 `/health`로 기동을 확인하고, 이어서 배포 PostgreSQL에서 Agent
+실행부터 검토와 Publish까지 같은 이미지로 통합 검증한다. 운영 인증은 현재 MVP
+smoke와 분리된 후속 보안 작업이다.
 
 ## Docker build context and paths
 
@@ -102,7 +106,7 @@ library 설치가 성공하는지 실제 image build로 확인한다. 브라우�
 
 | Variable | Local | AWS deployment |
 |---|---|---|
-| `DATABASE_URL` | `sqlite:///./storage/gangnam-change-agent.db` | `postgresql+psycopg://...` |
+| `DATABASE_URL` | `sqlite:///./gangnam-change-agent.db` | `postgresql+psycopg://...` |
 | `OPENAI_API_KEY` | 개발자 로컬 secret | AWS secret 환경변수 |
 | `OPENAI_OCR_MODEL` | `.env.example` 기본값 | 필요 시 재정의 |
 | `OPENAI_POLICY_MODEL` | `.env.example` 기본값 | 필요 시 재정의 |
@@ -111,11 +115,13 @@ library 설치가 성공하는지 실제 image build로 확인한다. 브라우�
 | `S3_ATTACHMENT_REGION` | `ap-northeast-2` | 버킷 리전 |
 | `S3_ATTACHMENT_PREFIX` | `public-attachments` | 공개 첨부 key prefix |
 | `PUBLIC_ATTACHMENT_BASE_URL` | 선택 | S3 또는 CloudFront 공개 base URL |
+| `S3_REVIEW_ATTACHMENT_PREFIX` | `review-attachments` | 관리자 검토용 비공개 첨부 key prefix |
+| `S3_REVIEW_URL_EXPIRES_IN` | `900` | 관리자 presigned URL 만료 시간 |
 
 PostgreSQL 비밀번호, OpenAI key, AWS credential과 내부 접속 주소는 로그, Dockerfile,
 image layer, Git 문서에 실제 값으로 남기지 않는다.
 
-백엔드 실행 IAM Role에는 설정된 첨부 버킷 prefix의 `s3:PutObject` 권한을 부여한다.
+백엔드 실행 IAM Role에는 공개·검토 첨부 prefix의 `s3:PutObject`와 검토 prefix의 `s3:GetObject` 권한을 부여한다.
 정적 access key는 주입하지 않는다. 시민 PWA가 고정 URL로 접근할 수 있도록 해당 공개
 prefix 또는 앞단 CloudFront 읽기 정책을 설정하되 버킷 전체를 공개하지 않는다.
 
