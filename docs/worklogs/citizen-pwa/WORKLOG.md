@@ -3,7 +3,7 @@
 ## Current status
 
 - Current milestone: 온보딩부터 정책 상세까지 이어지는 시민 PWA 데모
-- Working: manifest, service worker, 동적 프로필 타입, IndexedDB 저장, 재귀 판정 matcher, 온보딩·질문 답변과 UNKNOWN/STALE 재판정, 카드 피드와 로컬 숨기기, 승인 정책 API 연결, 입력 정보 요약과 선택 관심 분야 저장
+- Working: manifest, service worker, 동적 프로필 타입, IndexedDB 저장, 재귀 판정 matcher, 온보딩·질문 답변과 UNKNOWN/STALE 재판정, 카드 피드와 로컬 숨기기, 승인 정책 API 연결, canonical profile field catalog 연결, 입력 정보 요약과 선택 관심 분야 저장
 - In progress: 홈 화면 피드백 반영과 관심 분야를 여러 공고 정렬에 연결할 시점 검토
 - Not implemented: 없음
 - Blockers: 없음
@@ -59,6 +59,28 @@
 - docs/contracts/field-definition.schema.json
 
 ## Change history
+
+### 2026-08-06 canonical profile field catalog 연결
+
+#### Summary
+
+시민 PWA가 `GET /api/profile-fields`에서 승인된 canonical field의 질문·enum 선택지·표시 순서를 받아 온보딩을 구성하도록 연결했다. `core` 네 개(거주 지역, 연령, 취업 상태, 자주 이용하는 정류장)는 첫 설정에서 받고, `optional` 관심 분야는 요약 뒤 선택 입력으로 유지한다. 기존 하드코딩 관심 분야 정의는 제거했으며, 정류장처럼 자유 입력 `list` 타입은 쉼표로 여러 값을 입력해 IndexedDB에 배열로 저장한다. 시민 답변은 어떤 API 요청에도 포함하지 않는다.
+
+#### Tests
+
+- `npm.cmd test`: 10 passed
+- `npm.cmd run build`: passed
+- 로컬 API: `GET /health` 200, `GET /api/profile-fields` 5개 canonical field 반환 확인
+
+### 2026-08-06 인트로 정보 요약 화면 가독성 정리
+
+#### Summary
+
+기본 정보 입력 뒤의 요약 화면에서 선택지가 흩어져 보이지 않도록 관심 분야 안내를 하나의 선택 안내 카드로 정리했다. 이 카드를 누르면 선택 입력으로 이동하고, 반복되던 `관심 분야 추가하기` 버튼은 제거했다. 관심 분야 카드는 파란 주 선택지로 강조하고, 홈 진입 `지금 공고 보러가기`는 테두리 보조 버튼으로 낮춰 다음 행동을 쉽게 구분했다. 관심 분야 선택 화면도 같은 버튼 묶음과 위계를 적용하고, 보조 동작 문구를 `나중에 설정할게요`로 명확히 했다. 보조 버튼도 주 버튼과 같은 높이·글자 크기·정렬을 사용하도록 맞추고, 선택 입력 중복 표기를 제거했다. 앱 내부 탭·상세·온보딩 진입은 브라우저 방문 기록에 저장해 뒤로가기 시 이전 앱 화면으로 돌아가게 했다.
+
+#### Tests
+
+- `npm.cmd run build`: passed
 
 ### 2026-08-05 발표용 목업 해제와 승인 공고 API 전환
 

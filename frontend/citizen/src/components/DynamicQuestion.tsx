@@ -112,17 +112,24 @@ export function DynamicQuestion(props: DynamicQuestionProps) {
       <form
         onSubmit={(event) => {
           event.preventDefault();
-          submitAnswer(props.field.data_type === "number" ? Number(input) : input);
+          const value = props.field.data_type === "number"
+            ? Number(input)
+            : props.field.data_type === "list"
+              ? input.split(",").map((item) => item.trim()).filter(Boolean)
+              : input;
+          submitAnswer(value);
         }}
       >
         <input
           onChange={(event) => setInput(event.target.value)}
           className="answer-input"
+          placeholder={props.field.data_type === "list" ? "예: 강남역, 역삼역" : undefined}
           required
           type={props.field.data_type === "number" ? "number" : "text"}
           value={input}
         />
         <button className="answer-button" disabled={props.pending} type="submit">답변 저장</button>
+        {props.field.data_type === "list" && <p className="input-help">여러 곳이면 쉼표로 구분해 입력해 주세요.</p>}
       </form>
     </section>
   );
